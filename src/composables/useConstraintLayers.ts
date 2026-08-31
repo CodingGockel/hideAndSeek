@@ -3,6 +3,8 @@ import L from 'leaflet'
 import { useQuestionStore } from '../stores/questions'
 import { useGameStore } from '../stores/game'
 import { bisectorLine, distanceMeters, halfPlanePolygon, nearest } from '../lib/geo'
+import { SHEET_HALF_RATIO } from '../lib/layout'
+import { cssColor } from '../lib/theme'
 import type { Constraint } from '../types/game'
 
 /**
@@ -33,7 +35,48 @@ const HANDLE_PANE = 'constraint-handles'
  * tausend Einträge in der Region — als Marker wäre das eine unlesbare Fläche, und
  * für die Frage zählt ohnehin nur die nähere Umgebung.
  */
-const MAX_POI_MARKERS = 120
+const MAX_POI_MARKERS = 60
+
+/**
+ * Piktogramme der Ortskategorien, im 24er-Raster und geschlossen gezeichnet: bei
+ * rund 14 px Kantenlänge überlebt nur eine kräftige Silhouette.
+ */
+const POI_GLYPHS: Record<string, string> = {
+  // Giebel über drei Säulen
+  museum: 'M12 2 1 8v2h22V8zM4 12h2.6v6H4zm6.7 0h2.6v6h-2.6zM17.4 12H20v6h-2.6zM2 20h20v2H2z',
+  // Aufgeschlagenes Buch
+  library:
+    'M12 6.6C10.3 5.3 7.9 4.6 5 4.6c-1 0-2 .1-3 .3v13.4c1-.2 2-.3 3-.3 2.9 0 5.3.7 7 2 1.7-1.3 4.1-2 7-2 1 0 2 .1 3 .3V4.9c-1-.2-2-.3-3-.3-2.9 0-5.3.7-7 2z',
+  // Filmstreifen
+  cinema:
+    'M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 3v2h2V7zm14 0v2h2V7zM4 11v2h2v-2zm14 0v2h2v-2zM4 15v2h2v-2zm14 0v2h2v-2zM8 7v10h8V7z',
+  // Medizinisches Kreuz
+  hospital: 'M9 2h6v7h7v6h-7v7H9v-7H2V9h7z',
+  // Nadelbaum
+  park: 'M12 2 5.5 11H9l-4 6h6v5h2v-5h6l-4-6h3.5z',
+  // Tierpfote: Ballen und drei Zehen. Vier Zehen zerfallen bei 14 px zu Rauschen.
+  zoo: 'M12 12.4c2.9 0 5.3 2 5.3 4.5 0 1.7-1.3 3.1-3 3.1-1.1 0-1.8-.5-2.3-.5s-1.2.5-2.3.5c-1.7 0-3-1.4-3-3.1 0-2.5 2.4-4.5 5.3-4.5zM5.2 5.8c1.7 0 3.1 1.7 3.1 3.8s-1.4 3.8-3.1 3.8S2.1 11.7 2.1 9.6s1.4-3.8 3.1-3.8zm13.6 0c1.7 0 3.1 1.7 3.1 3.8s-1.4 3.8-3.1 3.8-3.1-1.7-3.1-3.8 1.4-3.8 3.1-3.8zM12 2.5c1.8 0 3.2 1.8 3.2 4s-1.4 4-3.2 4-3.2-1.8-3.2-4 1.4-4 3.2-4z',
+  // Fahne am Loch
+  golf_course: 'M7 2h2v20H7zm2 .8 11 4-11 4z',
+  // Riesenrad
+  theme_park:
+    'M12 2a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-1 2.1V10H5.4A7 7 0 0 1 11 4.1zm2 0A7 7 0 0 1 18.6 10H13zM5.4 12H11v5.9A7 7 0 0 1 5.4 12zm7.6 5.9V12h5.6a7 7 0 0 1-5.6 5.9zM8 21h8v2H8z',
+  // Globus. Eine Flagge wäre vom Golfplatz-Symbol nicht zu unterscheiden.
+  consulate:
+    'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2.2c1.2 0 2.5 2.2 3 5.8H9c.5-3.6 1.8-5.8 3-5.8zM6.8 10H4.5a7.9 7.9 0 0 1 3.3-4.4A16 16 0 0 0 6.8 10zm0 4c.1 1.6.4 3.1.9 4.4A7.9 7.9 0 0 1 4.5 14zM9 14h6c-.5 3.6-1.8 5.8-3 5.8S9.5 17.6 9 14zm8.2 0h2.3a7.9 7.9 0 0 1-3.2 4.4c.5-1.3.8-2.8.9-4.4zm0-4a16 16 0 0 0-1-4.4A7.9 7.9 0 0 1 19.5 10z',
+  // Flugzeug
+  airport:
+    'M21.5 15.5v-2l-8-5V3a1.5 1.5 0 0 0-3 0v5.5l-8 5v2l8-2.4V19l-2.2 1.6V22l3.7-1 3.7 1v-1.4L13.5 19v-5.9z',
+  // Fisch. Der Schwanz braucht spürbar Breite, sonst bleibt optisch nur ein Auge übrig.
+  aquarium:
+    'M22 12c-1.9 3.3-5.4 5.6-9.2 5.6-2.5 0-4.8-.9-6.4-2.5L2 19.5v-15l4.4 4.4C8 7.3 10.3 6.4 12.8 6.4c3.8 0 7.3 2.3 9.2 5.6zm-5.6-1.4a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8z',
+  // Bahnhof — für „Rail Station", das nicht aus poi.json kommt
+  station:
+    'M12 2c-4 0-7 .5-7 4v8.5A2.5 2.5 0 0 0 7.5 17L6 19.5v.5h2l1.5-2h5l1.5 2h2v-.5L16.5 17a2.5 2.5 0 0 0 2.5-2.5V6c0-3.5-3-4-7-4zM7.5 7h9v4.5h-9zm2 6.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zm5 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5z',
+}
+
+/** Punkt als Rückfall, wenn eine Kategorie kein eigenes Zeichen hat. */
+const POI_FALLBACK_GLYPH = 'M12 6a6 6 0 1 1 0 12 6 6 0 0 1 0-12z'
 
 /** Antworten, die den Bereich einschliessen statt ihn auszuschliessen. */
 const INCLUSIVE = new Set(['yes', 'closer', 'hotter'])
@@ -44,7 +87,15 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
 
   let group: L.LayerGroup | null = null
 
+  /** Farbe einer Einschränkung — die Vorschau folgt dem Farbschema statt der Palette. */
+  function colorOf(constraint: Constraint) {
+    return constraint.preview ? cssColor('--preview', '#1e293b') : constraint.color
+  }
+
   function isInclusive(constraint: Constraint) {
+    // Die Vorschau hat noch keine Antwort. Sie zeigt die eingeschlossene Form —
+    // abgedunkelt zu beginnen würde eine Aussage vortäuschen, die noch aussteht.
+    if (constraint.preview) return true
     return INCLUSIVE.has(constraint.answer)
   }
 
@@ -76,17 +127,20 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     if (!radius) return
 
     const inclusive = isInclusive(constraint)
+    const color = colorOf(constraint)
     layers.push(
       L.circle([constraint.origin.lat, constraint.origin.lon], {
         renderer: renderer.value ?? undefined,
         radius,
-        color: constraint.color,
-        weight: 2,
+        color,
+        weight: constraint.preview ? 3 : 2,
         opacity: 0.95,
         // Gestrichelt heisst „hier nicht" — auch ohne Farbwahrnehmung unterscheidbar.
-        dashArray: inclusive ? undefined : '7,5',
-        fillColor: inclusive ? constraint.color : EXCLUDED_FILL,
-        fillOpacity: inclusive ? 0.12 : 1,
+        // Die Vorschau ist ebenfalls gestrichelt, aber in neutralem Grau und ohne
+        // Abdunkelung: sie zeigt die Grösse, noch keine Aussage.
+        dashArray: inclusive && !constraint.preview ? undefined : '7,5',
+        fillColor: inclusive ? color : EXCLUDED_FILL,
+        fillOpacity: constraint.preview ? 0.16 : inclusive ? 0.12 : 1,
         interactive: false,
       }),
     )
@@ -142,27 +196,41 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
   function poisFor(constraint: Constraint) {
     if (!constraint.poiCategory) return []
     if (constraint.poiCategory === 'station') {
-      return game.visibleStations.map((s) => ({ name: s.name, lat: s.lat, lon: s.lon }))
+      return game.visibleStations.map((s) => ({
+        name: s.name,
+        lat: s.lat,
+        lon: s.lon,
+        category: 'station',
+      }))
     }
     return store.poisByCategory.get(constraint.poiCategory) ?? []
   }
 
-  /** Kleiner Punkt für einen Ort, in der Farbe seiner Einschränkung. */
-  function poiDot(
+  /**
+   * Ein Ort als Piktogramm seiner Kategorie, eingefärbt nach der Einschränkung, zu
+   * der er gehört. Der nächstgelegene wird grösser und weiss umrandet gezeigt.
+   */
+  function poiMarker(
     constraint: Constraint,
-    poi: { name: string; lat: number; lon: number },
+    poi: { name: string; lat: number; lon: number; category?: string },
     highlighted: boolean,
   ) {
-    // Weisser Ring auch bei den kleinen Punkten: sonst gehen sie neben den
-    // Stationsmarkern unter, obwohl bei diesen Fragen sie das Thema sind.
-    return L.circleMarker([poi.lat, poi.lon], {
-      renderer: renderer.value ?? undefined,
-      radius: highlighted ? 9 : 6,
-      color: '#ffffff',
-      weight: highlighted ? 3 : 2,
-      fillColor: constraint.color,
-      fillOpacity: 1,
-    }).bindTooltip(poi.name, { direction: 'top', offset: [0, -6] })
+    const size = highlighted ? 30 : 22
+    const glyph = POI_GLYPHS[poi.category ?? ''] ?? POI_FALLBACK_GLYPH
+    const classes = highlighted ? 'poi-pin is-nearest' : 'poi-pin'
+
+    return L.marker([poi.lat, poi.lon], {
+      keyboard: false,
+      icon: L.divIcon({
+        className: 'poi-pin-host',
+        html:
+          `<span class="${classes}" style="--c:${colorOf(constraint)}">` +
+          `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${glyph}"/></svg>` +
+          `</span>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      }),
+    }).bindTooltip(poi.name, { direction: 'top', offset: [0, -size / 2 - 2] })
   }
 
   /** Tentacles: Kreis um den Fragepunkt und die Orte, die darin liegen. */
@@ -174,11 +242,12 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
       L.circle([constraint.origin.lat, constraint.origin.lon], {
         renderer: renderer.value ?? undefined,
         radius,
-        color: constraint.color,
-        weight: 2,
+        color: colorOf(constraint),
+        weight: constraint.preview ? 3 : 2,
         opacity: 0.95,
-        fillColor: constraint.color,
-        fillOpacity: 0.08,
+        dashArray: constraint.preview ? '7,5' : undefined,
+        fillColor: colorOf(constraint),
+        fillOpacity: constraint.preview ? 0.14 : 0.08,
         interactive: false,
       }),
     )
@@ -186,7 +255,7 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     const inside = poisFor(constraint).filter(
       (poi) => distanceMeters(constraint.origin, poi) <= radius,
     )
-    for (const poi of inside) layers.push(poiDot(constraint, poi, false))
+    for (const poi of inside) layers.push(poiMarker(constraint, poi, false))
 
     layers.push(handleFor(constraint, 'origin', [constraint.origin.lat, constraint.origin.lon]))
   }
@@ -204,9 +273,9 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
 
     for (const poi of shown) {
       if (poi === closest.item) continue
-      layers.push(poiDot(constraint, poi, false))
+      layers.push(poiMarker(constraint, poi, false))
     }
-    layers.push(poiDot(constraint, closest.item, true))
+    layers.push(poiMarker(constraint, closest.item, true))
 
     layers.push(
       L.polyline(
@@ -242,14 +311,14 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
           renderer: renderer.value ?? undefined,
           radius,
           stroke: false,
-          fillColor: inclusive ? constraint.color : EXCLUDED_FILL,
+          fillColor: inclusive ? colorOf(constraint) : EXCLUDED_FILL,
           fillOpacity: inclusive ? 0.18 : 1,
           interactive: false,
         }),
       )
     }
 
-    layers.push(poiDot(constraint, closest.item, true))
+    layers.push(poiMarker(constraint, closest.item, true))
     layers.push(handleFor(constraint, 'origin', [constraint.origin.lat, constraint.origin.lon]))
   }
 
@@ -259,7 +328,9 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     group = null
 
     const layers: L.Layer[] = []
-    for (const constraint of store.visibleConstraints) {
+    // Die Vorschau liegt zuletzt und damit über den bestätigten Einschränkungen.
+    const all = [...store.visibleConstraints, ...(store.preview ? [store.preview] : [])]
+    for (const constraint of all) {
       if (constraint.viz === 'radius') drawRadius(constraint, layers)
       else if (constraint.viz === 'halfplane') drawHalfPlane(constraint, layers)
       else if (constraint.viz === 'poi-within') drawPoiWithin(constraint, layers)
@@ -271,6 +342,7 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
   }
 
   watch(() => store.constraints, draw, { deep: true })
+  watch(() => store.preview, draw, { deep: true })
 
   function bind() {
     if (!map.value) return
@@ -280,7 +352,8 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
 
   /** Karte auf eine Einschränkung ziehen. */
   function focusConstraint(id: string) {
-    const constraint = store.constraints.find((c) => c.id === id)
+    const constraint =
+      id === '__preview' ? store.preview : store.constraints.find((c) => c.id === id)
     if (!constraint || !map.value) return
 
     const origin = L.latLng(constraint.origin.lat, constraint.origin.lon)
@@ -302,7 +375,13 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
       bounds = origin.toBounds(FALLBACK_EXTENT * 2)
     }
 
-    map.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
+    // Das Sheet verdeckt den unteren Teil der Karte; ohne den Zuschlag läge die
+    // Geometrie genau dahinter.
+    map.value.fitBounds(bounds, {
+      paddingTopLeft: [40, 40],
+      paddingBottomRight: [40, Math.round(window.innerHeight * SHEET_HALF_RATIO)],
+      maxZoom: 15,
+    })
   }
 
   return { bind, draw, focusConstraint }

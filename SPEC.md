@@ -14,7 +14,7 @@ Spielgebiet: alle Bahn-/Metro-Stationen, die mit dem **Amsterdam & Region Travel
 | State | Pinia + `localStorage` | kein Backend, kein Sync — Absprache läuft über eure Chat-Gruppe |
 | Geometrie | Turf.js nur im Build-Skript | Das Gebiets-Polygon entsteht vorab; im Client reicht Haversine + Leaflet |
 | Daten | statische JSON/GeoJSON in `public/data/` | zur Laufzeit per `fetch()` — **ohne Rebuild austauschbar** |
-| Offline | vorerst nein | PWA als späterer Ausbau vorgesehen, Architektur blockiert ihn nicht |
+| Offline | nein | Manifest für den Homescreen-Start ist da, aber kein Service Worker — die Architektur blockiert ihn nicht |
 | Hosting | GitHub Pages / Cloudflare Pages | statisch. **HTTPS ist Pflicht**, sonst kein `geolocation` |
 
 **Bewusst nicht in V1:** Server, Accounts, Echtzeit-Sync, Push, Foto-Upload, Routing/Fahrplan.
@@ -68,6 +68,11 @@ Die **Isodistanz** ist der eleganteste Fall: Die Menge aller Punkte, die näher 
 *irgendeinem* Museum liegen als der Fragende, ist exakt die Vereinigung gleich grosser
 Kreise um alle Museen — mit dem eigenen Abstand zum nächsten als Radius. Exakt zeichenbar,
 ganz ohne Voronoi.
+
+„Karte" zeichnet die Geometrie sofort als neutrale Vorschau, bevor eine Antwort gewählt
+ist — sonst müsste man sich für ja oder nein entscheiden, ohne zu sehen, worüber man
+entscheidet. Die Vorschau wird nicht gespeichert und verschwindet beim Verlassen des
+Fragen-Bereichs.
 
 Der Bezugspunkt einer Einschränkung wird beim Anlegen **eingefroren**. Mit der
 Live-Position würde der Kreis mitwandern und seine Aussage verlieren. A und B sind auf

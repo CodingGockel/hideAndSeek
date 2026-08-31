@@ -3,6 +3,7 @@ import L from 'leaflet'
 import { useGameStore } from '../stores/game'
 import type { AppConfig, Station, TransportMode } from '../types/game'
 import { SHEET_HALF_RATIO } from '../lib/layout'
+import { cssColor } from '../lib/theme'
 
 /**
  * Ganze Welt als äusserer Ring — mit dem Spielgebiet als Loch ergibt das die
@@ -27,15 +28,6 @@ const USER_PANE = 'user-position'
  * dem man weder Symbol noch einzelne Station erkennt.
  */
 const COMPACT_BELOW_ZOOM = 12
-
-/**
- * Leaflet erwartet konkrete Farbwerte, das Farbschema steckt aber in CSS-Variablen.
- * Also einmal auslesen — und bei einem Themenwechsel neu zeichnen.
- */
-function cssColor(name: string, fallback: string): string {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  return value || fallback
-}
 
 /**
  * Piktogramme im 24er-Raster, weiss auf der Farbe des Verkehrsmittels. Bei rund

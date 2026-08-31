@@ -47,7 +47,12 @@ Der Reiter „Fragen" listet alle Karten aus `jetlag_questions_medium.json`, nac
 gruppiert, mit Zeitlimit und Karten-Belohnung. Ein Häkchen markiert eine Frage als genutzt
 (bleibt in `localStorage`, kein Rundenkonzept).
 
-Wo es geht, zeichnet „Karte" die Antwort als Geometrie. Da Stationen bewusst **nicht**
+„Karte" zeigt die Geometrie **sofort als Vorschau** — grau gestrichelt, noch ohne
+Aussage. Bei Radar sieht man damit erst einmal, wie gross der gewählte Radius überhaupt
+ist; die Karte zoomt passend und das Sheet klappt halb ein, sodass die Antwortknöpfe
+erreichbar bleiben. Beim frei gewählten Radius wächst der Kreis beim Tippen mit. Erst
+die Antwort macht daraus eine farbige, bleibende Einschränkung; ein zweites Antippen von
+„Karte" verwirft die Vorschau. Da Stationen bewusst **nicht**
 automatisch ausgeschlossen werden, liegen beliebig viele Einschränkungen gleichzeitig
 übereinander — der Bereich, den alle offen lassen, ist der gesuchte. Jede Einschränkung
 lässt sich einzeln ausblenden oder löschen; die Punkte A und B sind auf der Karte
@@ -57,7 +62,7 @@ verschiebbar.
 |---|---|
 | Radar | Kreis um A. „Ja" wird ausgefüllt, „Nein" abgedunkelt und gestrichelt |
 | Thermometer | A setzen, dann auf die Karte tippen für B. Die Mittelsenkrechte trennt, die kalte Seite wird abgedunkelt |
-| Tentacles | Kreis plus alle Orte der Kategorie darin |
+| Tentacles | Kreis plus alle Orte der Kategorie darin, je mit Piktogramm (Museum, Zoo, Kino …) |
 | Matching | die Orte in der Nähe, der eigene nächstgelegene hervorgehoben |
 | Measuring | gleich grosse Kreise um **alle** Orte der Kategorie, mit dem eigenen Abstand zum nächsten als Radius. Die Vereinigung ist genau der Bereich, von dem aus ein Ort näher liegt als von A |
 | Photos | nicht zeichenbar, nur abhakbar |
@@ -95,6 +100,17 @@ Nach dem Bearbeiten `npm run data:area` laufen lassen, damit das Spielgebiet zur
 Stationsliste passt.
 
 Tram- und Bushaltestellen sind bewusst nicht enthalten (s. SPEC.md §7).
+
+## Auf dem Handy installieren
+
+Nach dem Deploy die Seite im Browser öffnen und zum Homescreen hinzufügen (iOS: Teilen →
+„Zum Home-Bildschirm"; Android: Menü → „App installieren"). Sie startet dann ohne
+Browserleiste, was beim Spielen spürbar Kartenfläche spart.
+
+Das ist reine Homescreen-Integration über `public/manifest.webmanifest` — **kein
+Offline-Modus**. Ohne Netz bleibt die Karte weiss, dafür gibt es keine Service-Worker-
+Cache-Fallen beim Deployen. `start_url` und die Icon-Pfade im Manifest sind relativ und
+machen einen anderen Repo-Namen ohne Anpassung mit.
 
 ## Deploy
 

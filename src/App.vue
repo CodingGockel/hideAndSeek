@@ -60,7 +60,7 @@ const status = computed(() => {
       return {
         tone: 'muted',
         label: 'Ortung aus',
-        detail: 'Einschalten oder Standort auf der Karte setzen',
+        detail: 'Einschalten oder Standort setzen',
       }
     }
     if (geo.status.value === 'locating') {
@@ -128,6 +128,28 @@ function originForQuestion() {
     return { lat: store.userPosition.lat, lon: store.userPosition.lon }
   }
   return mapRef.value?.getCenter() ?? null
+}
+
+// Verlässt man den Fragen-Bereich, ist eine unbestätigte Vorschau gegenstandslos.
+watch(tab, (value) => {
+  if (value !== 'questions') questions.clearPreview()
+})
+
+function onPreviewQuestion(question: Question | null, radiusMeters: number | null) {
+  if (!question) {
+    questions.clearPreview()
+    return
+  }
+  const origin = originForQuestion()
+  if (!origin) return
+
+  const preview = questions.setPreview(question, origin, radiusMeters)
+  if (!preview) return
+
+  // Halb aufklappen statt ganz: so ist die Geometrie oben zu sehen und die
+  // Antwortknöpfe bleiben unten erreichbar.
+  sheetRef.value?.expand()
+  mapRef.value?.focusConstraint(preview.id)
 }
 
 function onShowQuestion(question: Question, answer: string, radiusMeters: number | null) {
@@ -270,7 +292,7 @@ function onFocusConstraint(id: string) {
 
         <template v-else>
           <ConstraintList @focus="onFocusConstraint" />
-          <QuestionList @show="onShowQuestion" />
+          <QuestionList @show="onShowQuestion" @preview="onPreviewQuestion" />
         </template>
       </BottomSheet>
     </main>

@@ -22,6 +22,9 @@ const CONSTRAINTS_KEY = 'hs.constraints.v1'
  */
 const PALETTE = ['#0d9488', '#9333ea', '#db2777', '#65a30d', '#0284c7', '#ea580c']
 
+/** Neutrale Farbe für die Vorschau — sie gehört noch keiner Einschränkung. */
+const PREVIEW_COLOR = '#64748b'
+
 function loadJson<T>(file: string): Promise<T> {
   return fetch(`${BASE}data/${file}`).then((res) => {
     if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`)
@@ -57,6 +60,13 @@ export const useQuestionStore = defineStore('questions', () => {
   const usedIds = ref<Set<string>>(new Set(readStored<string[]>(USED_KEY, [])))
   const constraints = ref<Constraint[]>(readStored<Constraint[]>(CONSTRAINTS_KEY, []))
   const search = ref('')
+
+  /**
+   * Vorschau der Geometrie, solange noch keine Antwort gewählt ist. Sie liegt
+   * bewusst neben den echten Einschränkungen und wird nicht gespeichert — wer die
+   * Frage doch nicht stellt, soll nichts aufräumen müssen.
+   */
+  const preview = ref<Constraint | null>(null)
 
   watch(usedIds, () => writeStored(USED_KEY, [...usedIds.value]), { deep: true })
   watch(constraints, () => writeStored(CONSTRAINTS_KEY, constraints.value), { deep: true })
@@ -138,6 +148,41 @@ export const useQuestionStore = defineStore('questions', () => {
     return PALETTE.find((color) => !taken.has(color)) ?? PALETTE[constraints.value.length % PALETTE.length]
   }
 
+  /** Geometrie einer noch unbeantworteten Frage zeigen. */
+  function setPreview(
+    question: Question,
+    origin: LatLon,
+    radiusMeters: number | null,
+  ): Constraint | null {
+    // Ohne Antwort zeichenbar ist alles ausser dem Thermometer, das erst einen
+    // zweiten Punkt braucht.
+    if (question.viz === 'none' || question.viz === 'halfplane') {
+      preview.value = null
+      return null
+    }
+
+    preview.value = {
+      id: '__preview',
+      questionId: question.id,
+      categoryId: categoryOfQuestion.value.get(question.id)?.id ?? '',
+      label: question.label,
+      viz: question.viz,
+      origin,
+      radiusMeters: radiusMeters ?? question.radiusMeters ?? null,
+      poiCategory: question.poiCategory,
+      answer: '',
+      visible: true,
+      color: PREVIEW_COLOR,
+      createdAt: Date.now(),
+      preview: true,
+    }
+    return preview.value
+  }
+
+  function clearPreview() {
+    preview.value = null
+  }
+
   function addConstraint(
     question: Question,
     origin: LatLon,
@@ -160,6 +205,7 @@ export const useQuestionStore = defineStore('questions', () => {
       createdAt: Date.now(),
     }
     constraints.value = [...constraints.value, constraint]
+    preview.value = null
     return constraint
   }
 
@@ -201,6 +247,7 @@ export const useQuestionStore = defineStore('questions', () => {
     usedIds,
     constraints,
     search,
+    preview,
     allQuestions,
     questionById,
     categoryOfQuestion,
@@ -210,6 +257,8 @@ export const useQuestionStore = defineStore('questions', () => {
     drawableCount,
     visibleConstraints,
     awaitingTarget,
+    setPreview,
+    clearPreview,
     setConstraintPoint,
     load,
     toggleUsed,

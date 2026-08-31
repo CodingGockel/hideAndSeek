@@ -155,4 +155,6 @@ export interface Constraint {
   visible: boolean
   color: string
   createdAt: number
+  /** Noch nicht bestätigt: wird neutral gezeichnet und nicht gespeichert. */
+  preview?: boolean
 }

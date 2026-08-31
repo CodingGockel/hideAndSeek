@@ -17,8 +17,11 @@
   /* Karten-Overlays. Werden aus JS ausgelesen, weil Leaflet konkrete Farbwerte
      erwartet — deshalb inklusive Alpha statt separater Opacity. */
   --area-outside: rgb(15 23 42 / 0.3);
-  --area-border: #b45309;
+  --area-border: #dc2626;
   --radius-all: rgb(14 165 233 / 0.1);
+  /* Vorschau einer noch unbeantworteten Frage — muss auf beiden Kartenhelligkeiten
+     sofort ins Auge fallen, ohne wie eine bestätigte Einschränkung auszusehen. */
+  --preview: #1e293b;
 
   color-scheme: light dark;
 }
@@ -42,8 +45,9 @@
     /* Auf der dunklen Karte trägt vor allem die Grenzlinie die Information, die
        Abdunkelung aussen herum muss dafür kräftiger ausfallen. */
     --area-outside: rgb(0 0 0 / 0.5);
-    --area-border: #fbbf24;
+    --area-border: #f87171;
     --radius-all: rgb(56 189 248 / 0.16);
+    --preview: #e2e8f0;
   }
 }
 
@@ -148,6 +152,33 @@ button {
   border-width: 3px;
   box-shadow:
     0 0 0 3px var(--ring),
+    0 2px 8px rgb(0 0 0 / 0.5);
+}
+
+/* Orte der Fragekarten: Piktogramm der Kategorie in der Farbe ihrer Einschränkung. */
+.poi-pin {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+  color: #fff;
+}
+
+.poi-pin svg {
+  width: 66%;
+  height: 66%;
+  fill: currentColor;
+}
+
+/* Der nächstgelegene Ort trägt die Antwort — er darf auffallen. */
+.poi-pin.is-nearest {
+  border-width: 3px;
+  box-shadow:
+    0 0 0 3px var(--c),
     0 2px 8px rgb(0 0 0 / 0.5);
 }
 

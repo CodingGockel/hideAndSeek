@@ -5,6 +5,7 @@ import type { Question, QuestionCategory } from '../types/game'
 
 const emit = defineEmits<{
   show: [question: Question, answer: string, radiusMeters: number | null]
+  preview: [question: Question | null, radiusMeters: number | null]
 }>()
 
 const store = useQuestionStore()
@@ -25,6 +26,26 @@ function toggleCategory(id: string) {
 function onShow(question: Question, answer: string) {
   emit('show', question, answer, question.radiusMeters ?? customRadius.value)
   answering.value = null
+}
+
+/**
+ * Antippen von „Karte" zeigt die Geometrie sofort, noch vor der Antwort — bei
+ * Radar sieht man so erst einmal, wie gross der Radius überhaupt ist.
+ */
+function onToggleAnswering(question: Question) {
+  if (answering.value === question.id) {
+    answering.value = null
+    emit('preview', null, null)
+    return
+  }
+  answering.value = question.id
+  emit('preview', question, question.radiusMeters ?? customRadius.value)
+}
+
+/** Beim frei gewählten Radius wächst die Vorschau beim Tippen mit. */
+function onCustomRadiusChange(question: Question) {
+  if (answering.value !== question.id) return
+  emit('preview', question, customRadius.value)
 }
 
 /**
@@ -103,7 +124,7 @@ const ANSWER_LABELS: Record<string, string> = {
               type="button"
               class="show"
               :class="{ open: answering === question.id }"
-              @click="answering = answering === question.id ? null : question.id"
+              @click="onToggleAnswering(question)"
             >
               Karte
             </button>
@@ -113,7 +134,14 @@ const ANSWER_LABELS: Record<string, string> = {
           <div v-if="answering === question.id" class="answers">
             <label v-if="question.radiusMeters == null && question.viz === 'radius'" class="custom">
               Radius
-              <input v-model.number="customRadius" type="number" min="100" step="100" /> m
+              <input
+                v-model.number="customRadius"
+                type="number"
+                min="100"
+                step="100"
+                @input="onCustomRadiusChange(question)"
+              />
+              m
             </label>
             <p v-if="question.weak" class="weak-note">{{ question.weak }}</p>
             <div class="answer-buttons">
