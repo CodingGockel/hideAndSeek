@@ -1,0 +1,1262 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-31",
+  "source": "OpenStreetMap via Overpass (ODbL), manuell kuratiert",
+  "bbox": [
+    52.2,
+    4.45,
+    52.56,
+    5.15
+  ],
+  "stations": [
+    {
+      "id": "abcoude",
+      "name": "Abcoude",
+      "lat": 52.27856,
+      "lon": 4.977382,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4144568336"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amstelveenseweg",
+      "name": "Amstelveenseweg",
+      "lat": 52.338403,
+      "lon": 4.857577,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/250222266"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-amstel",
+      "name": "Amsterdam Amstel",
+      "lat": 52.346466,
+      "lon": 4.917557,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4040491812"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-bijlmer-arena",
+      "name": "Amsterdam Bijlmer ArenA",
+      "lat": 52.312245,
+      "lon": 4.947088,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4005961975"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-centraal",
+      "name": "Amsterdam Centraal",
+      "lat": 52.378901,
+      "lon": 4.900581,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4290854847",
+        "node/5424713348",
+        "node/9167352325"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-holendrecht",
+      "name": "Amsterdam Holendrecht",
+      "lat": 52.297989,
+      "lon": 4.960171,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/250233810"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-lelylaan",
+      "name": "Amsterdam Lelylaan",
+      "lat": 52.357837,
+      "lon": 4.834027,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4076017504",
+        "node/14127078780"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-muiderpoort",
+      "name": "Amsterdam Muiderpoort",
+      "lat": 52.360726,
+      "lon": 4.931248,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/2827632045"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-rai",
+      "name": "Amsterdam RAI",
+      "lat": 52.337035,
+      "lon": 4.890229,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4046323545",
+        "node/5360384018"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-science-park",
+      "name": "Amsterdam Science Park",
+      "lat": 52.352926,
+      "lon": 4.948315,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606648992"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-sloterdijk",
+      "name": "Amsterdam Sloterdijk",
+      "lat": 52.389032,
+      "lon": 4.838106,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/3938547498",
+        "node/5267675296"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "amsterdam-zuid",
+      "name": "Amsterdam Zuid",
+      "lat": 52.338807,
+      "lon": 4.873191,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5252944882",
+        "node/5267675295"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "beverwijk",
+      "name": "Beverwijk",
+      "lat": 52.478536,
+      "lon": 4.656619,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606596765"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "bloemendaal",
+      "name": "Bloemendaal",
+      "lat": 52.404348,
+      "lon": 4.627663,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606581800"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "bullewijk",
+      "name": "Bullewijk",
+      "lat": 52.306611,
+      "lon": 4.952236,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4046388677"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "castricum",
+      "name": "Castricum",
+      "lat": 52.545338,
+      "lon": 4.659115,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4085675599"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "de-pijp",
+      "name": "De Pijp",
+      "lat": 52.353975,
+      "lon": 4.890693,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5737467957"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "de-vlugtlaan",
+      "name": "De Vlugtlaan",
+      "lat": 52.379613,
+      "lon": 4.838222,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/2237721918"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "diemen",
+      "name": "Diemen",
+      "lat": 52.345207,
+      "lon": 4.967465,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606698742"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "diemen-zuid",
+      "name": "Diemen Zuid",
+      "lat": 52.330261,
+      "lon": 4.95606,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [
+        "GVB",
+        "NS"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/46199966"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "driehuis",
+      "name": "Driehuis",
+      "lat": 52.442741,
+      "lon": 4.638714,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606581797"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "duivendrecht",
+      "name": "Duivendrecht",
+      "lat": 52.323579,
+      "lon": 4.936527,
+      "modes": [
+        "train",
+        "metro"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041666291"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "europaplein",
+      "name": "Europaplein",
+      "lat": 52.341606,
+      "lon": 4.891473,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5737467956"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "gaasperplas",
+      "name": "Gaasperplas",
+      "lat": 52.311318,
+      "lon": 4.984322,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041642874"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ganzenhoef",
+      "name": "Ganzenhoef",
+      "lat": 52.323079,
+      "lon": 4.97355,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041662264"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "gein",
+      "name": "Gein",
+      "lat": 52.296338,
+      "lon": 4.989013,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041640589"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "haarlem",
+      "name": "Haarlem",
+      "lat": 52.388078,
+      "lon": 4.638579,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5252716645"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "haarlem-spaarnwoude",
+      "name": "Haarlem Spaarnwoude",
+      "lat": 52.382848,
+      "lon": 4.671354,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606551882"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "halfweg-zwanenburg",
+      "name": "Halfweg-Zwanenburg",
+      "lat": 52.385976,
+      "lon": 4.746874,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/1633149045"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "heemskerk",
+      "name": "Heemskerk",
+      "lat": 52.494635,
+      "lon": 4.686126,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606596764"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "heemstede-aerdenhout",
+      "name": "Heemstede-Aerdenhout",
+      "lat": 52.359505,
+      "lon": 4.606786,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606551879"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "heemstedestraat",
+      "name": "Heemstedestraat",
+      "lat": 52.352471,
+      "lon": 4.834303,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4053335995"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "henk-sneevlietweg",
+      "name": "Henk Sneevlietweg",
+      "lat": 52.346403,
+      "lon": 4.834503,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4075987791"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "hillegom",
+      "name": "Hillegom",
+      "lat": 52.30314,
+      "lon": 4.566075,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606551878"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "hoofddorp",
+      "name": "Hoofddorp",
+      "lat": 52.292867,
+      "lon": 4.69887,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4519026692"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "isolatorweg",
+      "name": "Isolatorweg",
+      "lat": 52.395171,
+      "lon": 4.850791,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4077313759"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "jan-van-galenstraat",
+      "name": "Jan van Galenstraat",
+      "lat": 52.372658,
+      "lon": 4.835294,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/250224485"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "koog-aan-de-zaan",
+      "name": "Koog aan de Zaan",
+      "lat": 52.457826,
+      "lon": 4.805683,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606663922"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "kraaiennest",
+      "name": "Kraaiennest",
+      "lat": 52.317031,
+      "lon": 4.979123,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041662265"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "krommenie-assendelft",
+      "name": "Krommenie-Assendelft",
+      "lat": 52.49505,
+      "lon": 4.755241,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4185358282"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "nieuw-vennep",
+      "name": "Nieuw Vennep",
+      "lat": 52.258859,
+      "lon": 4.645358,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/45920072"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "nieuwmarkt",
+      "name": "Nieuwmarkt",
+      "lat": 52.371318,
+      "lon": 4.900879,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4073743506"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "noord",
+      "name": "Noord",
+      "lat": 52.401993,
+      "lon": 4.932359,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5737467961"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "noorderpark",
+      "name": "Noorderpark",
+      "lat": 52.388932,
+      "lon": 4.9187,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5737467960"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "overamstel",
+      "name": "Overamstel",
+      "lat": 52.331732,
+      "lon": 4.917627,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/427565080"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "overveen",
+      "name": "Overveen",
+      "lat": 52.391077,
+      "lon": 4.606832,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606551881"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "postjesweg",
+      "name": "Postjesweg",
+      "lat": 52.364292,
+      "lon": 4.833961,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4077313763"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "purmerend",
+      "name": "Purmerend",
+      "lat": 52.503952,
+      "lon": 4.954412,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606663919"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "purmerend-overwhere",
+      "name": "Purmerend Overwhere",
+      "lat": 52.511222,
+      "lon": 4.967088,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606663918"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "purmerend-weidevenne",
+      "name": "Purmerend Weidevenne",
+      "lat": 52.49638,
+      "lon": 4.935029,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606663920"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "reigersbos",
+      "name": "Reigersbos",
+      "lat": 52.295648,
+      "lon": 4.974422,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041640590"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "rokin",
+      "name": "Rokin",
+      "lat": 52.370597,
+      "lon": 4.89258,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "way/266903916"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "santpoort-noord",
+      "name": "Santpoort Noord",
+      "lat": 52.433844,
+      "lon": 4.632818,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606581798"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "santpoort-zuid",
+      "name": "Santpoort Zuid",
+      "lat": 52.419349,
+      "lon": 4.631418,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606581799"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "sassenheim",
+      "name": "Sassenheim",
+      "lat": 52.214957,
+      "lon": 4.516235,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/1563570846"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "schiphol-airport",
+      "name": "Schiphol Airport",
+      "lat": 52.309597,
+      "lon": 4.762072,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/46122858"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "spaklerweg",
+      "name": "Spaklerweg",
+      "lat": 52.339959,
+      "lon": 4.921011,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4073693626"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "strandvliet",
+      "name": "Strandvliet",
+      "lat": 52.318536,
+      "lon": 4.941356,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4046383465"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "uitgeest",
+      "name": "Uitgeest",
+      "lat": 52.521431,
+      "lon": 4.70259,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606596763"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "van-der-madeweg",
+      "name": "Van der Madeweg",
+      "lat": 52.329448,
+      "lon": 4.930519,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/289445435"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "venserpolder",
+      "name": "Venserpolder",
+      "lat": 52.326767,
+      "lon": 4.94634,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4041664287"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "verrijn-stuartweg",
+      "name": "Verrijn Stuartweg",
+      "lat": 52.328939,
+      "lon": 4.966252,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4064153245"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "vijzelgracht",
+      "name": "Vijzelgracht",
+      "lat": 52.360817,
+      "lon": 4.891165,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/5737467958"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "voorhout",
+      "name": "Voorhout",
+      "lat": 52.225357,
+      "lon": 4.484053,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606551877"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "waterlooplein",
+      "name": "Waterlooplein",
+      "lat": 52.36739,
+      "lon": 4.902464,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "way/268782305"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "weesp",
+      "name": "Weesp",
+      "lat": 52.312207,
+      "lon": 5.044048,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606648991"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "weesperplein",
+      "name": "Weesperplein",
+      "lat": 52.361185,
+      "lon": 4.907974,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "way/268998785"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "wibautstraat",
+      "name": "Wibautstraat",
+      "lat": 52.354462,
+      "lon": 4.912025,
+      "modes": [
+        "metro"
+      ],
+      "operators": [
+        "GVB"
+      ],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4073693628"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "wormerveer",
+      "name": "Wormerveer",
+      "lat": 52.489277,
+      "lon": 4.793628,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4185358283"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "zaandam",
+      "name": "Zaandam",
+      "lat": 52.438249,
+      "lon": 4.813742,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4085675604"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "zaandam-kogerveld",
+      "name": "Zaandam Kogerveld",
+      "lat": 52.456755,
+      "lon": 4.819193,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606663921"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "zaandijk-zaanse-schans",
+      "name": "Zaandijk Zaanse Schans",
+      "lat": 52.469279,
+      "lon": 4.805157,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/4185358281"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "zandvoort-aan-zee",
+      "name": "Zandvoort aan Zee",
+      "lat": 52.375726,
+      "lon": 4.531462,
+      "modes": [
+        "train"
+      ],
+      "operators": [],
+      "lines": [],
+      "ticketValid": true,
+      "osmIds": [
+        "node/7606551880"
+      ],
+      "notes": ""
+    }
+  ]
+}
