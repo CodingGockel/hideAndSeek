@@ -60,3 +60,99 @@ export interface StationWithDistance extends Station {
   /** Liegt die aktuelle Position im Versteck-Radius dieser Station? */
   withinHidingRadius: boolean
 }
+
+// ---------------------------------------------------------------------------
+// Fragekarten und ihre Visualisierung
+// ---------------------------------------------------------------------------
+
+export interface LatLon {
+  lat: number
+  lon: number
+}
+
+/**
+ * Wie eine Frage auf der Karte dargestellt wird.
+ *
+ * - `radius`          Kreis um den Standort (Radar)
+ * - `halfplane`       Mittelsenkrechte zwischen zwei Punkten (Thermometer)
+ * - `poi-within`      Kreis plus die Orte darin (Tentacles)
+ * - `poi-nearest`     alle Orte der Kategorie, der nächstgelegene hervorgehoben (Matching)
+ * - `poi-isodistance` gleich grosse Kreise um alle Orte der Kategorie (Measuring):
+ *                     die Vereinigung ist genau der Bereich, der näher an einem Ort
+ *                     liegt als der Fragende
+ * - `none`            nicht zeichenbar, nur abhakbar (Photos, Grenzen, Höhen)
+ */
+export type VizKind =
+  | 'radius'
+  | 'halfplane'
+  | 'poi-within'
+  | 'poi-nearest'
+  | 'poi-isodistance'
+  | 'none'
+
+export interface Question {
+  id: string
+  label: string
+  viz: VizKind
+  poiCategory: string | null
+  radiusMeters?: number | null
+  /** Gesetzt, wenn die Frage mit den vorhandenen Daten kaum etwas aussagt. */
+  weak: string | null
+}
+
+export interface QuestionCategory {
+  id: string
+  name: string
+  prompt: string
+  answers: string[]
+  timeLimitMin: number
+  cards: { draw: number; keep: number }
+  questions: Question[]
+}
+
+export interface QuestionsFile {
+  version: number
+  generatedAt: string
+  game: string
+  size: string
+  categories: QuestionCategory[]
+}
+
+export interface Poi {
+  id: string
+  name: string
+  category: string
+  lat: number
+  lon: number
+}
+
+export interface PoiFile {
+  version: number
+  generatedAt: string
+  categories: { id: string; label: string }[]
+  pois: Poi[]
+}
+
+/**
+ * Eine gestellte und beantwortete Frage, als Geometrie auf der Karte.
+ *
+ * `origin` wird beim Anlegen eingefroren: die Frage wurde von einem bestimmten Ort
+ * aus gestellt. Mit der Live-Position würde der Kreis mitwandern und seine Aussage
+ * verlieren.
+ */
+export interface Constraint {
+  id: string
+  questionId: string
+  categoryId: string
+  label: string
+  viz: VizKind
+  origin: LatLon
+  /** Zweiter Punkt beim Thermometer: wohin gefahren wurde. */
+  target?: LatLon
+  radiusMeters?: number | null
+  poiCategory?: string | null
+  answer: string
+  visible: boolean
+  color: string
+  createdAt: number
+}

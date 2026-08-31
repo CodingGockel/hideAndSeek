@@ -151,6 +151,47 @@ button {
     0 2px 8px rgb(0 0 0 / 0.5);
 }
 
+/* Von Hand gesetzter Standort. In derselben Farbe wie die Ortung, aber als offener
+   Zielring statt als gefüllter Punkt — ein gefüllter blauer Kreis wäre von den
+   Bahn-Stationsmarkern kaum zu unterscheiden. */
+.user-pin.is-manual {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid #2563eb;
+  background: rgb(37 99 235 / 0.22);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 1px 5px rgb(0 0 0 / 0.5);
+  cursor: grab;
+}
+
+.user-pin.is-manual i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Verschiebbare Griffe für Frage- und Zielpunkt einer Einschränkung. */
+.constraint-handle {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--c);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: grab;
+}
+
 /* Die Attribution muss aus Lizenzgründen erreichbar bleiben, kostet ausgeklappt
    aber eine ganze Zeile. Eingeklappt bleibt ein antippbares „i". */
 .attribution-compact {

@@ -29,35 +29,64 @@ Spielgebiet: alle Bahn-/Metro-Stationen, die mit dem **Amsterdam & Region Travel
 3. Alle erlaubten Stationen als Marker, gefiltert nach Verkehrsmittel
 4. **Versteck-Radius:** 800 m um die gewählte Station als Kreis — das ist die Versteck-Regel
 5. **Gültigkeitsprüfung:** eigener Standort vs. Radius — „du bist 240 m von Haarlem, gültig"
-6. Eigener Standort (live) + „Zentrieren"-Button
+6. Eigener Standort (live) + „Zentrieren"-Button; alternativ von Hand auf der Karte
+   gesetzt und dort verschiebbar
 7. Stationsliste im Bottom Sheet, nach Entfernung sortiert, Suche
 8. Detail zu einer Station: Name, Betreiber, Linien, Entfernung, Link zu Maps
 9. Umschalter zwischen drei Basiskarten (Standard, ÖPNV, Satellit)
+
+**Standortquellen:** Ortung und ein von Hand gesetzter Punkt liegen getrennt im Store,
+der gesetzte hat Vorrang. Andernfalls würde ihn das nächste GPS-Update überschreiben und
+das Setzen wäre wirkungslos — mit `watchPosition` passiert das im Sekundentakt.
 
 **Spielregel, die die App abbildet:** Verstecke sind **ausschließlich Stationen**. Der Hider muss
 sich innerhalb von 800 m Luftlinie um eine Station aufhalten. Der Radius ist in `config.json`
 konfigurierbar, nicht im Code festgenagelt — ihr werdet ihn beim Spielen nachjustieren wollen.
 
-### V2 — Fragen-Engine (der eigentliche Nutzen)
-Jede beantwortete Frage schränkt die Menge möglicher Verstecke ein. Die App zeichnet die
-Einschränkung und **graut ausgeschlossene Stationen aus** — das ersetzt das Papier-Gefummel.
+### V2 — Fragekarten (umgesetzt)
 
-| Frage-Typ | Eingabe | Geometrie | Wirkung auf Stationen |
-|---|---|---|---|
-| **Radar** | Radius r, Ja/Nein | Kreis um Seeker-Position | Ja → alles außerhalb raus; Nein → alles innerhalb raus |
-| **Thermometer** | Punkt A → Punkt B, wärmer/kälter | Mittelsenkrechte zu AB | behält die Halbebene der wärmeren Seite |
-| **Measuring** | Referenz (Meer, Zentrum, …), näher/weiter | Distanzvergleich | filtert per berechnetem Attribut |
-| **Matching** | Attribut (Linie, Betreiber, Zone, Anfangsbuchstabe), gleich/ungleich | — | reiner Attributvergleich |
-| **Tentacles** | POI-Kategorie + Radius, genannter POI | nächster-POI-Zuordnung | behält Stationen, deren nächster POI der genannte ist |
+Alle 69 Karten aus `jetlag_questions_medium.json` stehen als durchsuchbare Liste zum
+Abhaken bereit. 38 davon lassen sich auf der Karte zeichnen.
 
-Konsequenz fürs Datenmodell: Jede Station braucht eine **stabile ID** und **abfragbare Attribute**.
-Der Spielstand ist dann nur eine Liste von Fragen — die ausgeschlossenen Stationen werden daraus
-jederzeit neu berechnet (also: Undo gratis, kein kaputter Zustand).
+**Entwurfsentscheidung:** Stationen werden *nicht* automatisch ausgeschlossen — die
+Geometrie wird gezeichnet, die Schlussfolgerung zieht der Spieler. Daraus folgt, dass
+die **Überlagerung** die Arbeit tun muss: ein einzelner Kreis hilft wenig, drei Kreise
+und eine Halbebene übereinander zeigen den verbleibenden Bereich. Zentrales Objekt ist
+deshalb nicht „die aktive Frage", sondern eine Liste von Einschränkungen, die
+gleichzeitig auf der Karte liegen, jede in eigener Farbe, einzeln ausblendbar.
 
-### V3 — Flüche & POIs
+| Frage-Typ | Zeichenbar | Geometrie |
+|---|---|---|
+| **Radar** (8) | alle | Kreis um A; „ja" gefüllt, „nein" abgedunkelt und gestrichelt |
+| **Thermometer** (3) | alle | A gesetzt, B per Tap; Mittelsenkrechte, kalte Seite abgedunkelt |
+| **Tentacles** (4) | alle | Kreis plus die Orte darin |
+| **Matching** (20) | 11 | Orte in der Nähe, der nächstgelegene hervorgehoben |
+| **Measuring** (20) | 12 | Isodistanz (s. u.) |
+| **Photos** (14) | 0 | rein soziale Mechanik |
+
+Die **Isodistanz** ist der eleganteste Fall: Die Menge aller Punkte, die näher an
+*irgendeinem* Museum liegen als der Fragende, ist exakt die Vereinigung gleich grosser
+Kreise um alle Museen — mit dem eigenen Abstand zum nächsten als Radius. Exakt zeichenbar,
+ganz ohne Voronoi.
+
+Der Bezugspunkt einer Einschränkung wird beim Anlegen **eingefroren**. Mit der
+Live-Position würde der Kreis mitwandern und seine Aussage verlieren. A und B sind auf
+der Karte verschiebbar.
+
+**Abweichung vom Original:** Radar- und Thermometer-Werte sind metrisch und auf das
+Gebiet zugeschnitten (500 m bis 40 km statt bis 161 km). Bei 45 × 40 km Spielgebiet
+schliessen die oberen Original-Stufen nichts mehr aus. Dadurch 69 statt 71 Karten.
+
+Nicht zeichenbar bleiben Verwaltungsgrenzen, Küstenlinie, Gewässer, Bahn- und
+Strassenlinien sowie Höhe über NN — die brauchen Polygon- und Liniengeometrie und lassen
+sich später ergänzen, ohne den Unterbau zu ändern.
+
+### V3 — Flüche
 - Fluch-Katalog aus JSON, aktive Flüche mit Timer
-- Vorab extrahierte POIs (Museen, Cafés, Zoos, Kinos, Parks) als eigene Layer für Tentakel-Fragen
-- Radien-Zeichenwerkzeug frei auf der Karte
+- Freies Radien-Zeichenwerkzeug auf der Karte
+- Voronoi-Zellen für Matching, um die zulässige Fläche exakt zu zeigen
+- Verwaltungsgrenzen und Küstenlinie als Polygone — schaltet die restlichen
+  Matching-/Measuring-Karten frei
 
 ---
 
@@ -95,8 +124,22 @@ Wird als weiches Overlay gezeichnet (Rest der Welt abgedunkelt), damit sofort kl
 ### `config.json`
 Startposition, Zoom-Grenzen, Versteck-Radius, die Liste der Basiskarten und die Farben pro `mode`.
 
-### `poi.json` *(ab V3)*
-Gleiche Struktur, plus `category` (`museum` | `cafe` | `zoo` | `cinema` | `park`).
+### `poi.json`
+Rund 2000 Orte in 11 Kategorien (Museum, Bibliothek, Kino, Krankenhaus, Park, Zoo,
+Golfplatz, Freizeitpark, Konsulat, Flughafen, Aquarium), erzeugt von
+`scripts/fetch-pois.mjs`. Rahmen bewusst grösser als das Spielgebiet, sonst bekämen
+Randstationen ein falsches „nächstes Museum". Kompakt geschrieben (225 kB, 49 kB gzip) —
+die Datei wird nie von Hand bearbeitet.
+
+Zwei Filter sind entscheidend: `zoo=petting_zoo` fliegt raus (163 von 193 „Zoos" sind
+niederländische Kinderbauernhöfe), und als Flughafen zählt nur, was einen IATA-Code hat
+(ein ICAO-Code reicht nicht, den hat auch ein Segelflugplatz).
+
+### `questions.json`
+Erzeugt von `scripts/build-questions.mjs` aus `jetlag_questions_medium.json`: stabile ID
+je Frage (damit Häkchen einen Neustart überstehen), Visualisierungstyp, POI-Bezug. Das
+Skript liest `poi.json` und markiert Fragen automatisch als **schwach**, wenn die Daten
+sie entwerten — bei nur einem Flughafen ist „gleicher nächster Flughafen?" immer „ja".
 
 ---
 
@@ -220,12 +263,11 @@ braucht es dafür nicht.
 
 ## 8. Status
 
-V1 ist umgesetzt und im Browser gegengeprüft (Standort emuliert, Auswahl, Suche, Radien).
-73 Stationen: 44 Bahn, 39 Metro, davon 10 Umsteigeknoten.
+V1 und V2 sind umgesetzt und im Browser gegengeprüft.
 
-Alle 73 Stationen sind bespielbar. Einzelne lassen sich über `ticketValid: false` in
-`public/data/stations.json` ausschliessen — die Datei ist von Hand editierbar, ohne dass
-etwas neu gebaut werden muss.
+- 73 Stationen (44 Bahn, 39 Metro, 10 Umsteigeknoten)
+- 2008 Orte in 11 Kategorien
+- 69 Fragekarten, 38 davon auf der Karte zeichenbar, 4 automatisch als schwach erkannt
 
 ### Beim Bauen aufgefallen
 
@@ -234,5 +276,12 @@ etwas neu gebaut werden muss.
 - `L.circle(...).getBounds()` funktioniert nur, wenn das Circle an einer Karte hängt —
   sonst kommen NaN-Bounds heraus. `L.latLng(...).toBounds(meter)` rechnet kartenunabhängig.
 - Leaflets `flyToBounds` hat die Karte im Test nicht bewegt, `fitBounds` schon.
+- `fitBounds` auf einen einzelnen Punkt ergibt ein leeres Rechteck und damit die höchste
+  Zoomstufe — bei Matching und Measuring war danach von der Geometrie nichts mehr zu
+  sehen. Ohne Radius braucht es einen festen Ersatz-Umkreis.
 - OSM benennt Bahn und Metro am selben Knoten unterschiedlich („Amsterdam Centraal" vs.
   „Centraal Station"). Stationen müssen räumlich zusammengeführt werden, nicht über den Namen.
+- CARTO-Basiskarten verlangen inzwischen einen API-Key und schreiben sonst
+  „API KEY REQUIRED" über die Kacheln.
+- Beim Prüfen der Zoomstufe über die Kachel-URLs täuscht die erste Kachel im DOM: beim
+  Zoomen bleiben alte stehen. Nur die höchste vorhandene Stufe ist die aktuelle.

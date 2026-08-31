@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "data:stations": "node scripts/fetch-stations.mjs",
     "data:area": "node scripts/build-area.mjs",
-    "data": "npm run data:stations && npm run data:area"
+    "data:pois": "node scripts/fetch-pois.mjs",
+    "data:questions": "node scripts/build-questions.mjs",
+    "data": "npm run data:stations && npm run data:area && npm run data:pois && npm run data:questions"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

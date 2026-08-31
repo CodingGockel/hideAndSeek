@@ -13,10 +13,17 @@ Client-only, mobile-first, kein Server. Der Entwurf steht in [SPEC.md](SPEC.md).
 - **Versteck-Radius**: 800 m um die gewählte Station, einzeln oder für alle auf einmal
 - **Gültigkeitsprüfung**: „Gültiges Versteck — 300 m von Amsterdam Zuid" anhand des
   eigenen Standorts. Das ist die Frage, die man unterwegs tatsächlich hat.
+- **Standort von Hand setzen**: „Standort setzen" antippen, dann auf die Karte tippen.
+  Der Punkt lässt sich anschliessend verschieben und ersetzt die Ortung, bis „GPS nutzen"
+  gedrückt wird — praktisch zum Planen zu Hause und wenn das GPS im Zug daneben liegt.
+  Er überlebt einen Neustart.
 - Stationsliste nach Entfernung sortiert, mit Suche
 - **Drei Basiskarten** zum Umschalten: Standard, ÖPNV-Karte (zeigt die Linien) und Satellit
 - Marker mit Piktogramm des Verkehrsmittels; Umsteigeknoten wie Amsterdam Zuid tragen
   einen zweiten Ring in der Farbe der zweiten Linie
+- **Fragenliste** mit allen 69 Fragekarten, durchsuchbar und einzeln abhakbar
+- **Fragen auf der Karte**: 38 der 69 Karten lassen sich zeichnen, beliebig viele
+  gleichzeitig und in eigenen Farben
 
 ## Loslegen
 
@@ -34,13 +41,48 @@ npm run dev -- --host
 Die **Ortung braucht HTTPS** — Ausnahme ist `localhost`. Über eine `http://192.168.x.x`-Adresse
 bleibt der Standort deshalb aus; zum Testen unterwegs die Seite deployen (s. u.).
 
+## Fragekarten
+
+Der Reiter „Fragen" listet alle Karten aus `jetlag_questions_medium.json`, nach Kategorie
+gruppiert, mit Zeitlimit und Karten-Belohnung. Ein Häkchen markiert eine Frage als genutzt
+(bleibt in `localStorage`, kein Rundenkonzept).
+
+Wo es geht, zeichnet „Karte" die Antwort als Geometrie. Da Stationen bewusst **nicht**
+automatisch ausgeschlossen werden, liegen beliebig viele Einschränkungen gleichzeitig
+übereinander — der Bereich, den alle offen lassen, ist der gesuchte. Jede Einschränkung
+lässt sich einzeln ausblenden oder löschen; die Punkte A und B sind auf der Karte
+verschiebbar.
+
+| Kategorie | Darstellung |
+|---|---|
+| Radar | Kreis um A. „Ja" wird ausgefüllt, „Nein" abgedunkelt und gestrichelt |
+| Thermometer | A setzen, dann auf die Karte tippen für B. Die Mittelsenkrechte trennt, die kalte Seite wird abgedunkelt |
+| Tentacles | Kreis plus alle Orte der Kategorie darin |
+| Matching | die Orte in der Nähe, der eigene nächstgelegene hervorgehoben |
+| Measuring | gleich grosse Kreise um **alle** Orte der Kategorie, mit dem eigenen Abstand zum nächsten als Radius. Die Vereinigung ist genau der Bereich, von dem aus ein Ort näher liegt als von A |
+| Photos | nicht zeichenbar, nur abhakbar |
+
+Fragen, die mit den vorhandenen Daten kaum etwas aussagen, sind als **schwach** markiert —
+etwa „gleicher nächster Flughafen?" (es gibt nur Schiphol, die Antwort ist immer ja) oder
+„gleicher nächster Park?" (über tausend Parks, die Antwort ist fast immer nein).
+
+Radar- und Thermometer-Werte sind metrisch und auf euer Gebiet zugeschnitten (500 m bis
+40 km) statt der Original-Meilen bis 161 km, die bei 45 × 40 km Spielgebiet nichts mehr
+ausschliessen.
+
 ## Stationsdaten pflegen
 
 ```bash
-npm run data          # Stationen aus OpenStreetMap ziehen + Spielgebiet neu berechnen
-npm run data:stations # nur Stationen
-npm run data:area     # nur das Gebiets-Polygon
+npm run data            # alles neu erzeugen
+npm run data:stations   # Stationen aus OpenStreetMap
+npm run data:area       # Spielgebiet aus der Stationsliste
+npm run data:pois       # Orte für die Fragekarten (~2000 Objekte)
+npm run data:questions  # Fragekarten mit Zeichen-Metadaten
 ```
+
+`data:questions` liest `jetlag_questions_medium.json` im Projektwurzelverzeichnis und
+braucht `poi.json` und `stations.json`, um die schwachen Fragen zu erkennen — also nach
+den beiden anderen laufen lassen (`npm run data` macht das in der richtigen Reihenfolge).
 
 `public/data/stations.json` wird zur Laufzeit geladen und kann **direkt editiert werden,
 ohne neu zu bauen**. Alle gefundenen Stationen sind bespielbar. Soll eine doch nicht
@@ -69,10 +111,12 @@ Bei GitHub Pages im Unterverzeichnis muss `base` in `vite.config.ts` gesetzt wer
 ## Aufbau
 
 ```
-public/data/          stations.json · area.geojson · config.json  ← zur Laufzeit geladen
-scripts/              Datenerzeugung (Overpass, Gebiets-Polygon)
-src/composables/      Leaflet-Instanz, Kartenebenen, Ortung
-src/stores/game.ts    gesamter Spielzustand (Pinia, in localStorage gespiegelt)
+public/data/            stations.json · area.geojson · config.json
+                        poi.json · questions.json      ← alle zur Laufzeit geladen
+scripts/                Datenerzeugung; scripts/lib/overpass.mjs teilen sich die Skripte
+src/composables/        Leaflet-Instanz, Stationsebenen, Fragen-Geometrie, Ortung
+src/stores/game.ts      Stationen, Karte, Standort
+src/stores/questions.ts Fragekarten, Häkchen, Einschränkungen
 ```
 
 `config.json` enthält den Versteck-Radius, den Kartenausschnitt, die Liste der Basiskarten

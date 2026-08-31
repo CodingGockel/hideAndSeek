@@ -9,6 +9,7 @@
  *   node scripts/fetch-stations.mjs
  */
 import { readFile, writeFile } from 'node:fs/promises'
+import { distance, overpass, slug } from './lib/overpass.mjs'
 
 // S, W, N, O — auf die Amsterdam-Region zugeschnitten. Bewusst etwas weiter als das
 // Ticket reicht (Castricum, Weesp, Nieuw Vennep), damit die Grenzfälle in der Liste
@@ -16,19 +17,6 @@ import { readFile, writeFile } from 'node:fs/promises'
 // und Hoorn herein, die mit dem Ticket nicht erreichbar sind.
 const BBOX = [52.2, 4.45, 52.56, 5.15]
 const OUT = new URL('../public/data/stations.json', import.meta.url)
-
-const ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-]
-
-// Overpass verlangt einen echten User-Agent (Node schickt sonst keinen und
-// bekommt 406) und ist regelmässig kurzzeitig überlastet — daher Retries.
-const USER_AGENT = 'hideAndSeek/1.0 (Jet-Lag-style game map; contact via repo)'
-const ROUNDS = 3
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const QUERY = `
 [out:json][timeout:180];
@@ -38,53 +26,6 @@ const QUERY = `
 );
 out center tags;
 `
-
-async function overpass() {
-  let lastError
-  for (let round = 1; round <= ROUNDS; round++) {
-    for (const url of ENDPOINTS) {
-      try {
-        process.stderr.write(`→ [${round}/${ROUNDS}] ${url}\n`)
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': USER_AGENT,
-            Accept: 'application/json',
-          },
-          body: new URLSearchParams({ data: QUERY }),
-        })
-        const body = await res.text()
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        // Bei Überlast antwortet Overpass mit HTTP 200 und einer HTML-Fehlerseite.
-        if (!body.trimStart().startsWith('{')) {
-          const hint = body.match(/Error<\/strong>: ([^<\n]+)/)?.[1] ?? 'keine JSON-Antwort'
-          throw new Error(hint.trim())
-        }
-        return JSON.parse(body)
-      } catch (err) {
-        lastError = err
-        process.stderr.write(`  fehlgeschlagen: ${err.message}\n`)
-      }
-    }
-    if (round < ROUNDS) {
-      const wait = round * 15
-      process.stderr.write(`  alle Endpunkte belegt, warte ${wait}s\n`)
-      await sleep(wait * 1000)
-    }
-  }
-  throw lastError
-}
-
-// Museums- und Touristenbahnen sind keine spielbaren Stationen.
-const EXCLUDED_OPERATOR = /stoomtrein|museum|toeristische|heritage/i
-
-const OPERATOR_ALIASES = {
-  'Gemeentelijk Vervoerbedrijf': 'GVB',
-  'Gemeentevervoerbedrijf': 'GVB',
-  'Nederlandse Spoorwegen': 'NS',
-  'NS Reizigers': 'NS',
-}
 
 /** Stillgelegtes und im Bau befindliches raus. */
 function isActive(tags) {
@@ -133,28 +74,7 @@ function operatorsOf(tags) {
     .map((o) => OPERATOR_ALIASES[o] ?? o)
 }
 
-function slug(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-/** Luftlinie in Metern, Haversine. */
-function distance(a, b) {
-  const R = 6371000
-  const toRad = (d) => (d * Math.PI) / 180
-  const dLat = toRad(b.lat - a.lat)
-  const dLon = toRad(b.lon - a.lon)
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(h))
-}
-
-const raw = await overpass()
+const raw = await overpass(QUERY)
 process.stderr.write(`${raw.elements.length} Elemente von Overpass\n`)
 
 // Ein Verkehrsknoten steckt in OSM oft in mehreren Objekten: ein Node für den Halt,

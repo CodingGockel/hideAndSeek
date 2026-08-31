@@ -16,12 +16,14 @@ interface Prefs {
   activeModes: TransportMode[]
   showAllRadii: boolean
   basemapId: string | null
+  manualPosition: { lat: number; lon: number } | null
 }
 
 const DEFAULT_PREFS: Prefs = {
   activeModes: ['train', 'metro', 'light_rail'],
   showAllRadii: false,
   basemapId: null,
+  manualPosition: null,
 }
 
 function loadPrefs(): Prefs {
@@ -52,10 +54,30 @@ export const useGameStore = defineStore('game', () => {
   const showAllRadii = ref(prefs.showAllRadii)
   const basemapId = ref<string | null>(prefs.basemapId)
 
-  const userPosition = ref<{ lat: number; lon: number; accuracy: number } | null>(null)
+  /** Was die Ortung liefert. */
+  const gpsPosition = ref<{ lat: number; lon: number; accuracy: number } | null>(null)
+
+  /**
+   * Von Hand auf der Karte gesetzter Standort. Nützlich zum Planen ohne GPS und
+   * wenn die Ortung im Zug daneben liegt.
+   */
+  const manualPosition = ref<{ lat: number; lon: number } | null>(prefs.manualPosition)
+
+  /** Wartet die Karte gerade auf einen Tap, um den Standort zu setzen? */
+  const placingPosition = ref(false)
+
+  /**
+   * Der gesetzte Punkt hat Vorrang vor der Ortung — sonst würde ihn das nächste
+   * GPS-Update überschreiben, und Setzen wäre sinnlos.
+   */
+  const userPosition = computed(() =>
+    manualPosition.value ? { ...manualPosition.value, accuracy: 0 } : gpsPosition.value,
+  )
+
+  const isManualPosition = computed(() => manualPosition.value !== null)
 
   watch(
-    [activeModes, showAllRadii, basemapId],
+    [activeModes, showAllRadii, basemapId, manualPosition],
     () => {
       try {
         localStorage.setItem(
@@ -64,6 +86,7 @@ export const useGameStore = defineStore('game', () => {
             activeModes: [...activeModes.value],
             showAllRadii: showAllRadii.value,
             basemapId: basemapId.value,
+            manualPosition: manualPosition.value,
           } satisfies Prefs),
         )
       } catch {
@@ -184,6 +207,17 @@ export const useGameStore = defineStore('game', () => {
     selectedId.value = id
   }
 
+  function setManualPosition(point: { lat: number; lon: number }) {
+    manualPosition.value = point
+    placingPosition.value = false
+  }
+
+  /** Zurück zur Ortung. */
+  function clearManualPosition() {
+    manualPosition.value = null
+    placingPosition.value = false
+  }
+
   function toggleMode(mode: TransportMode) {
     const next = new Set(activeModes.value)
     if (next.has(mode)) next.delete(mode)
@@ -206,6 +240,10 @@ export const useGameStore = defineStore('game', () => {
     basemapId,
     basemaps,
     activeBasemap,
+    gpsPosition,
+    manualPosition,
+    placingPosition,
+    isManualPosition,
     userPosition,
     hidingRadius,
     visibleStations,
@@ -217,5 +255,7 @@ export const useGameStore = defineStore('game', () => {
     load,
     select,
     toggleMode,
+    setManualPosition,
+    clearManualPosition,
   }
 })

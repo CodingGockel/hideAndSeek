@@ -247,25 +247,57 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     const pos = store.userPosition
     if (!pos) return
 
-    userLayer = L.layerGroup([
-      L.circle([pos.lat, pos.lon], {
-        pane: USER_PANE,
-        radius: pos.accuracy,
-        stroke: false,
-        fillColor: '#2563eb',
-        fillOpacity: 0.15,
-        interactive: false,
-      }),
-      L.circleMarker([pos.lat, pos.lon], {
-        pane: USER_PANE,
-        radius: 7,
-        color: '#ffffff',
-        weight: 3,
-        fillColor: '#2563eb',
-        fillOpacity: 1,
-        interactive: false,
-      }),
-    ]).addTo(map.value)
+    const layers: L.Layer[] = []
+
+    // Der Genauigkeitskreis gehört zur Ortung; ein gesetzter Punkt hat keine Streuung.
+    if (!store.isManualPosition && pos.accuracy > 0) {
+      layers.push(
+        L.circle([pos.lat, pos.lon], {
+          pane: USER_PANE,
+          radius: pos.accuracy,
+          stroke: false,
+          fillColor: '#2563eb',
+          fillOpacity: 0.15,
+          interactive: false,
+        }),
+      )
+    }
+
+    if (store.isManualPosition) {
+      // Gesetzter Standort: verschiebbar, und optisch als „von Hand" erkennbar.
+      layers.push(
+        L.marker([pos.lat, pos.lon], {
+          pane: USER_PANE,
+          draggable: true,
+          keyboard: false,
+          icon: L.divIcon({
+            className: 'user-pin-host',
+            html: '<span class="user-pin is-manual"><i></i></span>',
+            iconSize: [26, 26],
+            iconAnchor: [13, 13],
+          }),
+        })
+          .bindTooltip('Standort von Hand gesetzt', { direction: 'top', offset: [0, -12] })
+          .on('dragend', (event) => {
+            const { lat, lng } = (event.target as L.Marker).getLatLng()
+            store.setManualPosition({ lat, lon: lng })
+          }),
+      )
+    } else {
+      layers.push(
+        L.circleMarker([pos.lat, pos.lon], {
+          pane: USER_PANE,
+          radius: 7,
+          color: '#ffffff',
+          weight: 3,
+          fillColor: '#2563eb',
+          fillOpacity: 1,
+          interactive: false,
+        }),
+      )
+    }
+
+    userLayer = L.layerGroup(layers).addTo(map.value)
   }
 
   // Die Watcher werden im Setup-Scope des Composables registriert, nicht erst in
@@ -295,6 +327,7 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
 
   watch(() => store.showAllRadii, drawRadii)
   watch(() => store.userPosition, drawUser, { deep: true })
+  watch(() => store.isManualPosition, drawUser)
 
   // Wechselt das Gerät zwischen hell und dunkel, gelten andere Overlay-Farben.
   const themeQuery = window.matchMedia('(prefers-color-scheme: dark)')
