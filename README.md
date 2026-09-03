@@ -30,6 +30,9 @@ Client-only, mobile-first, kein Server. Der Entwurf steht in [SPEC.md](SPEC.md).
 - **Fragen verschicken**: ein Knopf je Karte baut die WhatsApp-Nachricht samt eigener
   Koordinaten und einem Link, der die Frage beim Empfänger wieder aufmacht — mit
   gestrichelten Vergleichslinien zu seinem eigenen Standort
+- **Sucher-Standort eintragen**: die Koordinaten aus dem Chat in den Knopf „Sucher"
+  tippen — danach zeichnet jede Frage sich um diesen Punkt, mit der Entfernung von dir
+  zu dem, was die Antwort entscheidet
 
 ## Loslegen
 
@@ -110,6 +113,18 @@ Ort auf beiden Seiten, bei Tentacles der nächste Ort im Kreis — dessen Name s
 zusätzlich im Klartext da, denn er *ist* die Antwort.
 
 Geantwortet wird im Chat; die App zeigt nur, was zur Antwort nötig ist.
+
+### Ohne Link: den Sucher-Standort eintragen
+
+Meist schicken die Sucher nur ihre Koordinaten in die Gruppe. Der Knopf **„Sucher"** auf
+der Karte nimmt sie entgegen — `52.37897, 4.90042`, Komma oder Leerzeichen dazwischen.
+Der Punkt erscheint als Ring auf der Karte, bleibt bis zum nächsten Ändern liegen und
+überlebt einen Neustart.
+
+Danach zeigt das Karten-Icon jeder Frage dasselbe Bild wie ein erhaltener Link:
+Geometrie um den Sucher, dazu von deiner Position die gestrichelten Linien mit der
+Entfernung. „Entfernen" schaltet zurück — dann zeichnet das Karten-Icon wieder um deinen
+eigenen Standort, wie beim Planen einer eigenen Frage.
 
 Thermometer-Karten lassen sich verschicken, aber nicht zeichnen: die Mittelsenkrechte
 bräuchte Start- *und* Zielpunkt, verschickt wird nur der aktuelle. Woher der Sucher

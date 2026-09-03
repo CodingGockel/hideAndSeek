@@ -84,6 +84,7 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   let areaLayer: L.LayerGroup | null = null
   let radiusLayer: L.LayerGroup | null = null
   let userLayer: L.LayerGroup | null = null
+  let seekerLayer: L.Marker | null = null
 
   function stationIcon(station: Station, selected: boolean): L.DivIcon {
     const config = store.config!
@@ -307,6 +308,35 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     userLayer = L.layerGroup(layers).addTo(map.value)
   }
 
+  /**
+   * Wo die Sucher stehen.
+   *
+   * Nicht verschiebbar: der Punkt ist eine Angabe aus dem Chat, keine Schätzung —
+   * geändert wird er dort, wo er auch eingetragen wurde. Farbe und Form folgen dem
+   * Ankerpunkt der Frage-Vorschau, die genau hier liegt, sobald eine Frage offen ist.
+   */
+  function drawSeeker() {
+    if (!map.value) return
+    seekerLayer?.remove()
+    seekerLayer = null
+
+    const seeker = store.seekerPosition
+    if (!seeker) return
+
+    seekerLayer = L.marker([seeker.lat, seeker.lon], {
+      pane: USER_PANE,
+      keyboard: false,
+      icon: L.divIcon({
+        className: 'seeker-pin-host',
+        html: `<span class="seeker-pin" style="--c:${cssColor('--preview', '#1e293b')}"></span>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      }),
+    })
+      .bindTooltip('Standort der Sucher', { direction: 'top', offset: [0, -12] })
+      .addTo(map.value)
+  }
+
   // Die Watcher werden im Setup-Scope des Composables registriert, nicht erst in
   // bind(): dort erzeugte Watcher gehörten zu keinem Scope und blieben beim
   // Unmount der Karte als Leak zurück. Die draw-Funktionen prüfen selbst, ob die
@@ -335,12 +365,14 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   watch(() => store.showAllRadii, drawRadii)
   watch(() => store.userPosition, drawUser, { deep: true })
   watch(() => store.isManualPosition, drawUser)
+  watch(() => store.seekerPosition, drawSeeker, { deep: true })
 
   // Wechselt das Gerät zwischen hell und dunkel, gelten andere Overlay-Farben.
   const themeQuery = window.matchMedia('(prefers-color-scheme: dark)')
   const onThemeChange = () => {
     drawArea()
     drawRadii()
+    drawSeeker()
   }
   themeQuery.addEventListener('change', onThemeChange)
   onUnmounted(() => themeQuery.removeEventListener('change', onThemeChange))
@@ -359,6 +391,7 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     drawStations()
     drawRadii()
     drawUser()
+    drawSeeker()
   }
 
   /** Karte auf einen Halt ziehen — so, dass der Versteck-Radius ganz ins Bild passt. */

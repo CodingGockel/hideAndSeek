@@ -10,6 +10,7 @@ import StationDetail from './components/StationDetail.vue'
 import QuestionList from './components/QuestionList.vue'
 import ShareQuestion from './components/ShareQuestion.vue'
 import IncomingQuestion from './components/IncomingQuestion.vue'
+import SeekerPosition from './components/SeekerPosition.vue'
 import { parseAskHash } from './lib/share'
 import type { LatLon, Question, TransportMode } from './types/game'
 
@@ -23,6 +24,7 @@ const tab = ref<Tab>('stations')
 const mapRef = ref<InstanceType<typeof GameMap> | null>(null)
 const sheetRef = ref<InstanceType<typeof BottomSheet> | null>(null)
 const pickerOpen = ref(false)
+const seekerOpen = ref(false)
 
 /** Frage, die gerade verschickt wird — samt eingefrorenem Bezugspunkt. */
 const shareTarget = ref<{
@@ -178,15 +180,26 @@ watch(tab, (value) => {
   if (value !== 'questions') questions.clearPreview()
 })
 
+/**
+ * Das Karten-Icon einer Frage.
+ *
+ * Steht der Standort der Sucher, ist die Frage von dort aus gestellt: dieselbe
+ * Darstellung wie bei einer per Link erhaltenen Frage — Geometrie um den Sucher, dazu
+ * von der eigenen Position eine beschriftete Linie zu dem, was die Antwort entscheidet.
+ * Ohne ihn bleibt es beim Planungsbild um die eigene Position.
+ */
 function onPreviewQuestion(question: Question | null, radiusMeters: number | null) {
   if (!question) {
     questions.clearPreview()
     return
   }
-  const origin = originForQuestion()
+  const seeker = store.seekerPosition
+  const origin = seeker ?? originForQuestion()
   if (!origin) return
 
-  const preview = questions.setPreview(question, origin, radiusMeters)
+  const preview = seeker
+    ? questions.setIncoming(question, seeker, radiusMeters, '')
+    : questions.setPreview(question, origin, radiusMeters)
   if (!preview) return
 
   // Halb aufklappen statt ganz: so ist die Geometrie oben zu sehen und die Zeile mit dem
@@ -278,6 +291,16 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
         <button
           type="button"
           class="fab"
+          :class="{ on: !!store.seekerPosition }"
+          :aria-expanded="seekerOpen"
+          @click="seekerOpen = !seekerOpen"
+        >
+          Sucher
+        </button>
+
+        <button
+          type="button"
+          class="fab"
           :class="{ on: store.showAllRadii }"
           :aria-pressed="store.showAllRadii"
           @click="store.showAllRadii = !store.showAllRadii"
@@ -285,6 +308,8 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
           Alle Radien
         </button>
       </div>
+
+      <SeekerPosition v-if="seekerOpen" @close="seekerOpen = false" />
 
       <ShareQuestion
         v-if="shareTarget"

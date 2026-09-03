@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type {
   AppConfig,
+  LatLon,
   Station,
   StationWithDistance,
   StationsFile,
@@ -19,6 +20,8 @@ interface Prefs {
   manualPosition: { lat: number; lon: number } | null
   /** Name, unter dem verschickte Fragen im Chat auftauchen ("Team Rot"). */
   senderName: string
+  /** Der von Hand eingetragene Standort der Sucher. */
+  seekerPosition: LatLon | null
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -27,6 +30,7 @@ const DEFAULT_PREFS: Prefs = {
   basemapId: null,
   manualPosition: null,
   senderName: '',
+  seekerPosition: null,
 }
 
 function loadPrefs(): Prefs {
@@ -71,6 +75,15 @@ export const useGameStore = defineStore('game', () => {
   const placingPosition = ref(false)
 
   /**
+   * Wo die Sucher stehen — von Hand aus dem Chat abgetippt.
+   *
+   * Getrennt von der eigenen Position und von der Frage-Vorschau: `clearPreview()`
+   * räumt beim Tab-Wechsel die Vorschau ab, der Punkt der Sucher soll aber bleiben,
+   * bis er von Hand geändert wird. Er überlebt deshalb auch einen Neustart.
+   */
+  const seekerPosition = ref<LatLon | null>(prefs.seekerPosition)
+
+  /**
    * Der gesetzte Punkt hat Vorrang vor der Ortung — sonst würde ihn das nächste
    * GPS-Update überschreiben, und Setzen wäre sinnlos.
    */
@@ -81,7 +94,7 @@ export const useGameStore = defineStore('game', () => {
   const isManualPosition = computed(() => manualPosition.value !== null)
 
   watch(
-    [activeModes, showAllRadii, basemapId, manualPosition, senderName],
+    [activeModes, showAllRadii, basemapId, manualPosition, senderName, seekerPosition],
     () => {
       try {
         localStorage.setItem(
@@ -92,6 +105,7 @@ export const useGameStore = defineStore('game', () => {
             basemapId: basemapId.value,
             manualPosition: manualPosition.value,
             senderName: senderName.value,
+            seekerPosition: seekerPosition.value,
           } satisfies Prefs),
         )
       } catch {
@@ -233,6 +247,14 @@ export const useGameStore = defineStore('game', () => {
     placingPosition.value = false
   }
 
+  function setSeekerPosition(point: LatLon) {
+    seekerPosition.value = point
+  }
+
+  function clearSeekerPosition() {
+    seekerPosition.value = null
+  }
+
   function toggleMode(mode: TransportMode) {
     const next = new Set(activeModes.value)
     if (next.has(mode)) next.delete(mode)
@@ -260,6 +282,7 @@ export const useGameStore = defineStore('game', () => {
     gpsPosition,
     manualPosition,
     placingPosition,
+    seekerPosition,
     isManualPosition,
     userPosition,
     hidingRadius,
@@ -275,5 +298,7 @@ export const useGameStore = defineStore('game', () => {
     toggleMode,
     setManualPosition,
     clearManualPosition,
+    setSeekerPosition,
+    clearSeekerPosition,
   }
 })

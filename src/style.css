@@ -214,6 +214,20 @@ button {
   box-shadow: 0 0 0 2px #fff;
 }
 
+/* Wo die Sucher stehen. Ein Ring statt einer Scheibe: sobald eine Frage offen ist,
+   liegt der Ankerpunkt der Vorschau in derselben Farbe genau in seiner Mitte. */
+.seeker-pin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid var(--c);
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 1px 5px rgb(0 0 0 / 0.5);
+}
+
 /* Der Punkt, von dem aus gefragt wird. Fest, deshalb ein schlichter Punkt statt eines
    Griffs — er liegt meist genau auf der eigenen Position und soll sie nicht verdecken. */
 .preview-anchor {

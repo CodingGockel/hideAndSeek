@@ -155,6 +155,36 @@ bleibt beim Spieler, wie schon bei den Einschränkungen.
 **Grenzen.** Eine feste WhatsApp-Gruppe lässt sich nicht adressieren — `wa.me` kennt nur
 einen Chat-Picker oder eine Telefonnummer, keine Gruppen-ID.
 
+### V5 — Sucher-Standort von Hand (umgesetzt)
+
+Der Antwort-Weg aus V4 setzt voraus, dass die Sucher die App benutzen und den Link
+schicken. Sie tun das nicht immer — oft steht in der Gruppe nur „wir sind bei
+52.37897, 4.90042". Deshalb lässt sich derselbe Punkt auch von Hand eintragen: ein
+Knopf „Sucher" auf der Karte, ein Textfeld, ein Zahlenpaar.
+
+Von da an ist es **derselbe Zustand wie ein erhaltener Link**: das Karten-Icon einer
+Frage legt ihre Geometrie um den Sucher-Standort und zieht von der eigenen Position die
+gestrichelten Vergleichslinien (§V4, Tabelle). Es gibt keinen neuen Kartentyp und keinen
+zweiten Zeichenweg — nur eine Weiche in `onPreviewQuestion`: mit Sucher-Standort
+`setIncoming`, ohne ihn wie bisher `setPreview` um die eigene Position.
+
+Bewusst schmal gehalten:
+
+- **Nur ein Standort.** Eine Liste benannter Teams wäre Zustand, den unterwegs niemand
+  pflegt; gefragt hat ohnehin gerade eines.
+- **Nur ein Textfeld**, kein Setzen per Kartentipp und kein Ziehen des Markers. Der Punkt
+  ist eine Angabe aus dem Chat, keine Schätzung — er wird abgetippt, nicht gepeilt.
+- **Bleibt liegen**, auch beim Tab-Wechsel und über einen Neustart (`hs.prefs.v2`). Er
+  darf deshalb nicht in `preview`/`incoming` stehen: die räumt `clearPreview()` weg.
+
+Der Marker ist ein Ring in der Vorschau-Farbe, kein Punkt: liegt eine Frage an, setzt
+sich der Ankerpunkt der Vorschau genau in seine Mitte, statt ihn zu verdecken.
+
+Dabei fiel ein Fehler auf, der auch den Link-Weg betraf: `focusPreview` passte den
+Ausschnitt nur um den Fragepunkt an. Steht der Sucher ein paar Kilometer weiter, lief die
+eigene Vergleichslinie aus dem Bild — die halbe Aussage. Die Bounds schliessen jetzt bei
+`compareToUser` die eigene Position ein.
+
 ### V3 — Flüche
 - Fluch-Katalog aus JSON, aktive Flüche mit Timer
 - Freies Radien-Zeichenwerkzeug auf der Karte
@@ -358,7 +388,7 @@ Alkmaar. Wer einen Halt ganz ausschliessen will, setzt `ticketValid: false` in
 
 ## 8. Status
 
-V1, V2 und V4 sind umgesetzt und headless gegen den echten Datenstand gegengeprüft:
+V1, V2, V4 und V5 sind umgesetzt und headless gegen den echten Datenstand gegengeprüft:
 Kartenvorschau je Frage-Typ (Orte, hervorgehobener nächster, Linie samt Entfernung) sowie
 der Link-Rundlauf über Sende- und Empfangsweg im DOM.
 

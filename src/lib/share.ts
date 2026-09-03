@@ -120,10 +120,18 @@ export function buildAskUrl(link: AskLink): string {
   return `${appBaseUrl()}#${params.toString()}`
 }
 
-/** Ein Punkt aus "lat,lon", oder null wenn daraus keine Koordinate wird. */
-function parseLatLon(raw: string | null): LatLon | null {
+/**
+ * Ein Punkt aus "lat,lon", oder null wenn daraus keine Koordinate wird.
+ *
+ * Dient auch der Eingabe von Hand: der Sucher-Standort kommt als abgetippte Zeile aus
+ * dem Chat, und dort steht mal ein Komma, mal nur ein Leerzeichen zwischen den Zahlen.
+ */
+export function parseLatLon(raw: string | null): LatLon | null {
   if (!raw) return null
-  const [latRaw, lonRaw] = raw.split(',')
+  const [latRaw, lonRaw] = raw.trim().split(/[,;\s]+/)
+  // Number('') ist 0 — ohne die Leerprüfung würde "52.3," als Punkt am Nullmeridian
+  // durchgehen statt als Tippfehler.
+  if (!latRaw || !lonRaw) return null
   const lat = Number(latRaw)
   const lon = Number(lonRaw)
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null

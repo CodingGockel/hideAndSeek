@@ -420,9 +420,17 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
       extent = closest ? Math.max(closest.distance * 1.4, MIN_EXTENT) : FALLBACK_EXTENT
     }
 
+    const bounds = origin.toBounds(extent * 2)
+
+    // Bei einer fremden Frage gehört die eigene Position zum Bild: die Linie dorthin ist
+    // die halbe Aussage. Steht der Fragende ein paar Kilometer weiter, liefe sie sonst
+    // aus dem Ausschnitt heraus.
+    const position = game.userPosition
+    if (preview.compareToUser && position) bounds.extend([position.lat, position.lon])
+
     // Das Sheet verdeckt den unteren Teil der Karte; ohne den Zuschlag läge die
     // Geometrie genau dahinter.
-    map.value.fitBounds(origin.toBounds(extent * 2), {
+    map.value.fitBounds(bounds, {
       paddingTopLeft: [40, 40],
       paddingBottomRight: [40, Math.round(window.innerHeight * SHEET_HALF_RATIO)],
       maxZoom: 15,
