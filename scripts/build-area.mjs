@@ -24,7 +24,9 @@ const outUrl = new URL('../public/data/area.geojson', import.meta.url)
 
 const { stations } = JSON.parse(await readFile(stationsUrl, 'utf8'))
 
-// Ausdrücklich ausgeschlossene Stationen dürfen das Gebiet nicht aufblähen.
+// Ausdrücklich ausgeschlossene Halte dürfen das Gebiet nicht aufblähen. Die
+// Aufpreis-Bahnhöfe zählen dagegen mit: sie sind bespielbar, also gehören sie ins
+// Gebiet — auch wenn die Hülle dadurch bis Utrecht und Alkmaar reicht.
 const playable = stations.filter((s) => s.ticketValid !== false)
 if (playable.length < 3) {
   throw new Error(`Zu wenige spielbare Stationen für eine Hülle: ${playable.length}`)

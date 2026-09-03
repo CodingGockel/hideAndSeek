@@ -3,11 +3,30 @@ import { computed } from 'vue'
 import { useGameStore } from '../stores/game'
 import { formatDistance } from '../lib/geo'
 import ModeBadges from './ModeBadges.vue'
+import type { TransportMode } from '../types/game'
 
 const emit = defineEmits<{ back: [] }>()
 const store = useGameStore()
 
 const station = computed(() => store.selectedStation)
+
+const MODE_ORDER: TransportMode[] = ['train', 'metro', 'tram', 'ferry', 'bus']
+
+/**
+ * Was hier hält, nach Verkehrsmittel gruppiert — „Tram 12, 25". Das Verkehrsmittel
+ * des Halts steht oben, danach der Rest in fester Reihenfolge.
+ */
+const servedBy = computed(() => {
+  const s = station.value
+  if (!s) return []
+  const order = [s.mode, ...MODE_ORDER.filter((m) => m !== s.mode)]
+  return order.filter((mode) => s.lines[mode]?.length).map((mode) => ({
+    mode,
+    label: store.config?.modes[mode]?.label ?? mode,
+    color: store.config?.modes[mode]?.color ?? '#475569',
+    lines: s.lines[mode]!.join(', '),
+  }))
+})
 
 const mapsUrl = computed(() =>
   station.value
@@ -17,7 +36,7 @@ const mapsUrl = computed(() =>
 
 /**
  * Der Satz, für den die App eigentlich da ist: zählt der aktuelle Standort als
- * Versteck an dieser Station?
+ * Versteck an diesem Halt?
  */
 const verdict = computed(() => {
   const s = station.value
@@ -39,12 +58,16 @@ const verdict = computed(() => {
 
 <template>
   <div v-if="station" class="detail">
-    <button type="button" class="back" @click="emit('back')">← Alle Stationen</button>
+    <button type="button" class="back" @click="emit('back')">← Alle Haltestellen</button>
 
     <h2 class="name">{{ station.name }}</h2>
-    <ModeBadges :modes="station.modes" />
+    <ModeBadges :station="station" />
 
     <p class="verdict" :class="verdict?.tone">{{ verdict?.text }}</p>
+
+    <p v-if="station.extraCost" class="warn">
+      Ausserhalb des Amsterdam &amp; Region Travel Ticket — die Fahrt dorthin kostet Aufpreis.
+    </p>
 
     <dl class="facts">
       <div>
@@ -55,15 +78,18 @@ const verdict = computed(() => {
         <dt>Versteck-Radius</dt>
         <dd>{{ store.hidingRadius }} m</dd>
       </div>
-      <div v-if="station.operators.length">
-        <dt>Betreiber</dt>
-        <dd>{{ station.operators.join(', ') }}</dd>
-      </div>
-      <div v-if="station.lines.length">
-        <dt>Linien</dt>
-        <dd>{{ station.lines.join(', ') }}</dd>
+      <div v-if="station.aliases.length">
+        <dt>Auch bekannt als</dt>
+        <dd>{{ station.aliases.join(', ') }}</dd>
       </div>
     </dl>
+
+    <ul v-if="servedBy.length" class="lines">
+      <li v-for="row in servedBy" :key="row.mode">
+        <span class="line-mode" :style="{ '--badge': row.color }">{{ row.label }}</span>
+        <span class="line-list">{{ row.lines }}</span>
+      </li>
+    </ul>
 
     <p v-if="station.notes" class="note">{{ station.notes }}</p>
 
@@ -116,6 +142,48 @@ const verdict = computed(() => {
   background: var(--surface-sunken);
   color: var(--text-muted);
   font-weight: 500;
+}
+
+.warn {
+  margin: 14px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #b45309 14%, transparent);
+  color: #b45309;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.lines {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.lines li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.line-mode {
+  flex: none;
+  min-width: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-align: center;
+  color: var(--badge);
+  background: color-mix(in srgb, var(--badge) 14%, transparent);
+}
+
+.line-list {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .facts {

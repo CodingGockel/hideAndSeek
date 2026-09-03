@@ -10,7 +10,7 @@ import type {
 import { distanceMeters } from '../lib/geo'
 
 const BASE = import.meta.env.BASE_URL
-const PREFS_KEY = 'hs.prefs.v1'
+const PREFS_KEY = 'hs.prefs.v2'
 
 interface Prefs {
   activeModes: TransportMode[]
@@ -20,7 +20,7 @@ interface Prefs {
 }
 
 const DEFAULT_PREFS: Prefs = {
-  activeModes: ['train', 'metro', 'light_rail'],
+  activeModes: ['train', 'metro', 'tram', 'bus', 'ferry'],
   showAllRadii: false,
   basemapId: null,
   manualPosition: null,
@@ -105,10 +105,16 @@ export const useGameStore = defineStore('game', () => {
     () => basemaps.value.find((b) => b.id === basemapId.value) ?? basemaps.value[0] ?? null,
   )
 
-  /** Stationen, die bespielbar sind — explizit ausgeschlossene fliegen raus. */
+  /** Halte, die bespielbar sind — explizit ausgeschlossene fliegen raus. */
   const playable = computed(() => stations.value.filter((s) => s.ticketValid !== false))
 
-  /** Bespielbare Stationen mit Entfernung zur aktuellen Position. */
+  /**
+   * Nur die Bahnhöfe. „Ist dein nächster Bahnhof meiner?" darf nicht plötzlich
+   * Bushaltestellen meinen, seit auch die in der Liste stehen.
+   */
+  const railStations = computed(() => playable.value.filter((s) => s.isStation))
+
+  /** Bespielbare Halte mit Entfernung zur aktuellen Position. */
   const withDistance = computed<StationWithDistance[]>(() => {
     const pos = userPosition.value
     const radius = hidingRadius.value
@@ -124,15 +130,15 @@ export const useGameStore = defineStore('game', () => {
 
   /** Was auf der Karte liegt: nach Verkehrsmittel gefiltert. */
   const visibleStations = computed(() =>
-    withDistance.value.filter((s) => s.modes.some((m) => activeModes.value.has(m))),
+    withDistance.value.filter((s) => activeModes.value.has(s.mode)),
   )
 
   /** Was in der Liste steht: zusätzlich nach Suchbegriff, nach Entfernung sortiert. */
   const listedStations = computed(() => {
     const q = search.value.trim().toLowerCase()
-    const rows = q
-      ? visibleStations.value.filter((s) => s.name.toLowerCase().includes(q))
-      : [...visibleStations.value]
+    const matches = (s: StationWithDistance) =>
+      s.name.toLowerCase().includes(q) || s.aliases.some((a) => a.toLowerCase().includes(q))
+    const rows = q ? visibleStations.value.filter(matches) : [...visibleStations.value]
 
     return rows.sort((a, b) => {
       // Bei aktiver Suche zuerst nach Treffergüte: wer "Haarlem" tippt, meint
@@ -153,7 +159,7 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * Die Station, in deren Versteck-Radius man gerade steht. Damit beantwortet die App
+   * Der Halt, in dessen Versteck-Radius man gerade steht. Damit beantwortet die App
    * die einzige Frage, die der Hider unterwegs wirklich hat: zählt das hier als Versteck?
    */
   const currentHidingSpot = computed(() => {
@@ -172,8 +178,12 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const modeCounts = computed(() => {
-    const counts = { train: 0, metro: 0, light_rail: 0 } as Record<TransportMode, number>
-    for (const s of playable.value) for (const m of s.modes) counts[m]++
+    // Ausgangspunkt sind die Verkehrsmittel aus der Konfiguration, damit auch eines
+    // ohne Halte eine Null bekommt statt undefined.
+    const counts = Object.fromEntries(
+      Object.keys(config.value?.modes ?? {}).map((m) => [m, 0]),
+    ) as Record<TransportMode, number>
+    for (const s of playable.value) counts[s.mode] = (counts[s.mode] ?? 0) + 1
     return counts
   })
 
@@ -246,6 +256,7 @@ export const useGameStore = defineStore('game', () => {
     isManualPosition,
     userPosition,
     hidingRadius,
+    railStations,
     visibleStations,
     listedStations,
     selectedStation,

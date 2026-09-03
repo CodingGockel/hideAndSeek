@@ -191,12 +191,14 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
 
   /**
    * Die Orte, auf die sich eine Frage bezieht. „Rail Station" steht nicht in
-   * poi.json — dafür gibt es die Stationsliste, die ohnehin geladen ist.
+   * poi.json — dafür gibt es die Stationsliste, die ohnehin geladen ist. Gemeint
+   * sind dabei nur Bahnhöfe, nicht jede Bushaltestelle, und unabhängig davon,
+   * welche Verkehrsmittel gerade eingeblendet sind.
    */
   function poisFor(constraint: Constraint) {
     if (!constraint.poiCategory) return []
     if (constraint.poiCategory === 'station') {
-      return game.visibleStations.map((s) => ({
+      return game.railStations.map((s) => ({
         name: s.name,
         lat: s.lat,
         lon: s.lon,

@@ -32,13 +32,13 @@ watch(geo.fix, (fix) => {
   store.gpsPosition = fix
 })
 
-// Eine Station lässt sich auch durch Antippen des Markers auswählen. Dann liegt das
+// Ein Halt lässt sich auch durch Antippen des Markers auswählen. Dann liegt das
 // Detail im eingeklappten Sheet und wäre unsichtbar — also aufklappen.
 watch(
   () => store.selectedId,
   (id) => {
     if (!id) return
-    // Marker angetippt: das Detail liegt im Stationen-Bereich, also dorthin wechseln
+    // Marker angetippt: das Detail liegt im Haltestellen-Bereich, also dorthin wechseln
     // und aufklappen — sonst passiert scheinbar nichts.
     tab.value = 'stations'
     sheetRef.value?.expand()
@@ -254,7 +254,7 @@ function onFocusConstraint(id: string) {
               :class="{ on: tab === 'stations' }"
               @click="tab = 'stations'"
             >
-              Stationen
+              Haltestellen
               <span class="tab-count">{{ store.listedStations.length }}</span>
             </button>
             <button

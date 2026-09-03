@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-31",
+  "generatedAt": "2026-09-03",
   "source": "jetlag_questions_medium.json",
   "game": "Jet Lag: Hide and Seek",
   "size": "medium",
@@ -195,7 +195,7 @@
           "label": "Rail Station",
           "viz": "poi-isodistance",
           "poiCategory": "station",
-          "weak": "der Hider steht per Regel an einer Station"
+          "weak": null
         },
         {
           "id": "measuring:international-border",

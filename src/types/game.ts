@@ -1,16 +1,22 @@
-export type TransportMode = 'train' | 'metro' | 'light_rail'
+export type TransportMode = 'train' | 'metro' | 'tram' | 'bus' | 'ferry'
 
 export interface Station {
   id: string
   name: string
+  /** Zweitname aus der Quelle ("Centraal Station"), damit die Suche ihn findet */
+  aliases: string[]
   lat: number
   lon: number
-  modes: TransportMode[]
-  operators: string[]
-  lines: string[]
-  /** false schliesst die Station vom Spiel aus */
+  /** Das Verkehrsmittel, wegen dem der Halt in der Liste steht — danach wird gefiltert */
+  mode: TransportMode
+  /** Bedienende Linien je Verkehrsmittel; leere Verkehrsmittel fehlen */
+  lines: Partial<Record<TransportMode, string[]>>
+  /** Bahnhof im Sinn der Frage „nächster Bahnhof" */
+  isStation: boolean
+  /** Mit dem Ticket erreichbar, aber nur gegen Aufpreis */
+  extraCost: boolean
+  /** false schliesst den Halt vom Spiel aus */
   ticketValid: boolean
-  osmIds: string[]
   notes: string
 }
 
@@ -18,7 +24,6 @@ export interface StationsFile {
   version: number
   generatedAt: string
   source: string
-  bbox: [number, number, number, number]
   stations: Station[]
 }
 
@@ -41,7 +46,7 @@ export interface ModeStyle {
 }
 
 export interface AppConfig {
-  /** Radius um eine Station, innerhalb dessen man sich verstecken darf */
+  /** Radius um einen Halt, innerhalb dessen man sich verstecken darf */
   hidingRadiusMeters: number
   map: {
     center: [number, number]
@@ -53,11 +58,11 @@ export interface AppConfig {
   modes: Record<TransportMode, ModeStyle>
 }
 
-/** Station mit auf die aktuelle Position bezogenen Angaben. */
+/** Halt mit auf die aktuelle Position bezogenen Angaben. */
 export interface StationWithDistance extends Station {
   /** Luftlinie in Metern, null solange keine Position bekannt ist */
   distance: number | null
-  /** Liegt die aktuelle Position im Versteck-Radius dieser Station? */
+  /** Liegt die aktuelle Position im Versteck-Radius dieses Halts? */
   withinHidingRadius: boolean
 }
 

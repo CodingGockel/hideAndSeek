@@ -1,7 +1,7 @@
 # Hide & Seek Amsterdam — Spec V1
 
 Begleit-App für ein Hide-and-Seek-Spiel nach dem Vorbild von *Jet Lag: The Game*.
-Spielgebiet: alle Bahn-/Metro-Stationen, die mit dem **Amsterdam & Region Travel Ticket** (3 Tage, €44) erreichbar sind.
+Spielgebiet: alle Haltestellen, die mit dem **Amsterdam & Region Travel Ticket** (3 Tage, €44) erreichbar sind — Bahn, Metro, Tram, Bus und Fähre.
 
 ---
 
@@ -26,29 +26,32 @@ Spielgebiet: alle Bahn-/Metro-Stationen, die mit dem **Amsterdam & Region Travel
 ### V1 — „Die Karte" (dieser Entwurf)
 1. Vollbild-Karte, mobile-first
 2. Spielgebiet als Polygon-Overlay
-3. Alle erlaubten Stationen als Marker, gefiltert nach Verkehrsmittel
-4. **Versteck-Radius:** 800 m um die gewählte Station als Kreis — das ist die Versteck-Regel
+3. Alle erlaubten Halte als Marker, gefiltert nach Verkehrsmittel
+4. **Versteck-Radius:** 800 m um den gewählten Halt als Kreis — das ist die Versteck-Regel
 5. **Gültigkeitsprüfung:** eigener Standort vs. Radius — „du bist 240 m von Haarlem, gültig"
 6. Eigener Standort (live) + „Zentrieren"-Button; alternativ von Hand auf der Karte
    gesetzt und dort verschiebbar
-7. Stationsliste im Bottom Sheet, nach Entfernung sortiert, Suche
-8. Detail zu einer Station: Name, Betreiber, Linien, Entfernung, Link zu Maps
+7. Haltestellenliste im Bottom Sheet, nach Entfernung sortiert, Suche
+8. Detail zu einem Halt: Name, bedienende Linien je Verkehrsmittel, Entfernung, Link zu Maps
 9. Umschalter zwischen drei Basiskarten (Standard, ÖPNV, Satellit)
 
 **Standortquellen:** Ortung und ein von Hand gesetzter Punkt liegen getrennt im Store,
 der gesetzte hat Vorrang. Andernfalls würde ihn das nächste GPS-Update überschreiben und
 das Setzen wäre wirkungslos — mit `watchPosition` passiert das im Sekundentakt.
 
-**Spielregel, die die App abbildet:** Verstecke sind **ausschließlich Stationen**. Der Hider muss
-sich innerhalb von 800 m Luftlinie um eine Station aufhalten. Der Radius ist in `config.json`
-konfigurierbar, nicht im Code festgenagelt — ihr werdet ihn beim Spielen nachjustieren wollen.
+**Spielregel, die die App abbildet:** Verstecke sind **ausschließlich Haltestellen** (die
+Spielerklärung: „Dein Zentrum ist die Station/Haltestelle, nicht dein genauer Standort"). Der
+Hider muss sich innerhalb von 800 m Luftlinie um einen Halt aufhalten. Der Radius ist in
+`config.json` konfigurierbar, nicht im Code festgenagelt — ihr werdet ihn beim Spielen
+nachjustieren wollen. (Die Quelldatei nennt 700 m; das ist nur der Abstand, auf den Bus- und
+Tramhalte ausgedünnt wurden, nicht der Spielradius.)
 
 ### V2 — Fragekarten (umgesetzt)
 
 Alle 69 Karten aus `jetlag_questions_medium.json` stehen als durchsuchbare Liste zum
 Abhaken bereit. 38 davon lassen sich auf der Karte zeichnen.
 
-**Entwurfsentscheidung:** Stationen werden *nicht* automatisch ausgeschlossen — die
+**Entwurfsentscheidung:** Halte werden *nicht* automatisch ausgeschlossen — die
 Geometrie wird gezeichnet, die Schlussfolgerung zieht der Spieler. Daraus folgt, dass
 die **Überlagerung** die Arbeit tun muss: ein einzelner Kreis hilft wenig, drei Kreise
 und eine Halbebene übereinander zeigen den verbleibenden Bereich. Zentrales Objekt ist
@@ -102,28 +105,40 @@ Alles liegt in `public/data/` und wird zur Laufzeit geladen. Ändern = Datei tau
 ### `stations.json`
 ```jsonc
 {
-  "version": 1,
-  "generatedAt": "2026-08-31",
-  "source": "OpenStreetMap via Overpass, manuell kuratiert",
+  "version": 2,
+  "generatedAt": "2026-09-03",
+  "source": "data/artt_verstecke.geojson (kuratierte ARTT-Versteckliste)",
   "stations": [
     {
-      "id": "nl-ams-centraal",          // stabil, wird für Spielstände referenziert
+      "id": "amsterdam-centraal",       // stabil, wird für Spielstände referenziert
       "name": "Amsterdam Centraal",
-      "lat": 52.3789,
-      "lon": 4.9005,
-      "modes": ["train", "metro", "tram", "ferry"],
-      "operators": ["NS", "GVB"],
-      "lines": ["M51", "M52", "M53", "M54"],
-      "ticketValid": true,              // false schliesst die Station vom Spiel aus
-      "osmId": "node/26913906",
+      "aliases": ["Centraal Station"],  // Zweitname der Quelle, nur für die Suche
+      "lat": 52.37897,
+      "lon": 4.90042,
+      "mode": "train",                  // wonach gefiltert und eingefärbt wird
+      "lines": {                        // wer hier hält, je Verkehrsmittel
+        "train": ["Intercity", "Sprinter", "…"],
+        "metro": ["51", "52", "53", "54"],
+        "tram": ["2", "4", "14", "17", "24", "26"],
+        "bus": ["18", "21", "…"],
+        "ferry": ["F2", "F3", "F4"]
+      },
+      "isStation": true,                // Bahnhof — für „nächster Bahnhof"
+      "extraCost": false,               // true = ausserhalb des Tickets, Aufpreis
+      "ticketValid": true,              // false schliesst den Halt vom Spiel aus
       "notes": ""
     }
   ]
 }
 ```
 
+`mode` ist einwertig und trägt den Filter: der Halt steht wegen genau eines Verkehrsmittels
+in der Liste. Die Linien-Spalten sagen zusätzlich, was dort sonst noch hält — daraus kommt
+der zweite Ring am Marker (Bus dabei ausgenommen: er hält fast überall und der Ring wäre
+dann bedeutungslos).
+
 ### `area.geojson`
-Ein `Polygon`/`MultiPolygon` mit dem Spielgebiet. **Nur visuell** — normativ ist die Stationsliste.
+Ein `Polygon`/`MultiPolygon` mit dem Spielgebiet. **Nur visuell** — normativ ist die Haltestellenliste.
 Wird als weiches Overlay gezeichnet (Rest der Welt abgedunkelt), damit sofort klar ist, wo Schluss ist.
 
 ### `config.json`
@@ -153,7 +168,7 @@ sie entwerten — bei nur einem Flughafen ist „gleicher nächster Flughafen?" 
 ```
 public/data/          stations.json · area.geojson · config.json   ← zur Laufzeit geladen
 scripts/
-  fetch-stations.mjs  Overpass → stations.json (Rohentwurf zum Kuratieren)
+  import-stations.mjs data/artt_verstecke.geojson → stations.json
   fetch-pois.mjs      Overpass → poi.json (V3)
 src/
   components/
@@ -223,10 +238,11 @@ Invertierung plus Farbkreisdrehung im Dunklen. Der Filter sitzt auf dem Layer-Co
 nicht auf der Tile-Pane — nur so bleiben Marker und Radien unberührt **und** lassen sich
 Luftbilder ausnehmen, aus denen die Invertierung sonst ein Negativ machen würde.
 
-**Stationsmarker:** Piktogramm des Verkehrsmittels (Zug, „M" für Metro, Tram) in Weiss auf
-der Modusfarbe. Umsteigeknoten tragen einen zweiten Ring in der Farbe des weiteren
-Verkehrsmittels. Unterhalb von Zoom 12 schrumpfen sie auf schlichte Punkte — volle Pins
-verklumpen in der Innenstadt sonst zu einem unlesbaren Haufen.
+**Haltestellenmarker:** Piktogramm des Verkehrsmittels (Zug, „M" für Metro, Tram, Bus,
+Fähre) in Weiss auf der Modusfarbe. Umsteigeknoten tragen einen zweiten Ring in der Farbe
+des weiteren Verkehrsmittels, Halte ausserhalb des Tickets einen gestrichelten Rand.
+Unterhalb von Zoom 13 schrumpfen sie auf schlichte Punkte — bei 459 Markern verklumpen
+volle Pins in der Innenstadt sonst zu einem unlesbaren Haufen.
 
 **Attribution:** Das Leaflet-Branding ist abgeschaltet, die Attribution der Kartendaten
 bleibt (Lizenzpflicht), eingeklappt auf ein antippbares „i". Das ist die von OpenStreetMap
@@ -234,45 +250,49 @@ für kleine Displays vorgesehene Form.
 
 ## 6. Datenbeschaffung
 
-Startpunkt per Overpass, danach **von Hand kuratieren**:
+Quelle ist `data/artt_verstecke.geojson`: die von Hand kuratierte Liste aller Halte im
+Geltungsbereich des Tickets — Bahn, Metro und Fähre vollständig, Bus und Tram auf 650 m
+Abstand ausgedünnt, je Halt die bedienenden Linien, dazu `in_artt` (im Ticket) und
+`is_station` (Bahnhof).
 
-```overpassql
-[out:json][timeout:90];
-(
-  nwr["railway"="station"](52.05,4.30,52.75,5.40);
-  nwr["railway"="halt"](52.05,4.30,52.75,5.40);
-);
-out center tags;
-```
+`scripts/import-stations.mjs` macht daraus `stations.json`: Linien-Spalten aufsplitten,
+IDs vergeben (`slug(name)`, bei Namensgleichheit an verschiedenen Orten mit dem Modus
+ergänzt — Zaandam ist Bahnhof *und* Fähranleger) und die doppelt geführten Bahnhöfe
+zusammenlegen. Die stehen einmal unter dem NS-Namen („Amsterdam Centraal") und einmal
+unter dem GVB-Namen („Centraal Station"); die Paare liegen unter 100 m auseinander, das
+nächste echte Bahnhofspaar über 800 m, deshalb trennt ein 300-m-Schwellwert sicher. Der
+verworfene Name bleibt als `aliases` erhalten, damit die Suche ihn findet.
 
-`scripts/fetch-stations.mjs` normalisiert daraus Namen, leitet `modes` aus den Tags ab
-(`station=subway` → metro, `station=light_rail`, sonst train), vergibt stabile IDs und führt
-Bahn- und Metro-Objekte am selben Knoten räumlich zusammen. Alle Treffer gelten als bespielbar.
-
-Es gibt keine öffentlich publizierte Liste der NS-Bahnhöfe, an denen die Ticket-Gültigkeit
-endet — I amsterdam sagt nur „NS trains within the Amsterdam Area". Statt das im Datenmodell
-mit Prüf- und Grenzfall-Zuständen abzubilden, sind schlicht alle gefundenen Stationen im Spiel.
-Wer eine ausschliessen will, setzt `ticketValid: false` in `stations.json` — mehr Mechanik
-braucht es dafür nicht.
+Vorher kam die Liste aus OpenStreetMap (`fetch-stations.mjs`, entfallen). Overpass kennt
+die Ticket-Grenze nicht — die kuratierte Datei schon, und zwar mit dem Zwischenzustand
+„erreichbar, aber gegen Aufpreis" (`extraCost`). Solche Halte sind bespielbar, in Liste und
+Karte markiert und zählen auch fürs Gebiet — die Hülle reicht dadurch bis Utrecht und
+Alkmaar. Wer einen Halt ganz ausschliessen will, setzt `ticketValid: false` in
+`stations.json`; nur das hält ihn aus Karte, Liste und Gebiet heraus.
 
 ## 7. Entschieden
 
-1. **Tram/Bus:** raus. Nur NS-Bahnhöfe und GVB-Metro sind Verstecke. Das hält die Liste bei ~150
-   statt mehreren Hundert Punkten und macht die Karte auf dem Handy überhaupt erst lesbar.
-2. **Verstecke:** ausschließlich Stationen, 800 m Radius (s. §2).
+1. **Tram/Bus:** drin. Ursprünglich waren nur NS-Bahnhöfe und GVB-Metro Verstecke, um die
+   Liste bei ~150 Punkten und die Karte lesbar zu halten. Die Spielerklärung nennt aber
+   ausdrücklich die *Haltestelle* als Zentrum der Zone, und mit der kuratierten Liste (Bus
+   und Tram auf 650 m ausgedünnt) bleiben es 459 Punkte. Lesbar bleibt die Karte über den
+   Filter je Verkehrsmittel und die Punkt-Darstellung unterhalb von Zoom 13.
+2. **Verstecke:** ausschließlich Haltestellen, 800 m Radius (s. §2).
 3. **Timer und Rollen:** nicht in der App. Bleibt bei euch im Chat, spart die halbe Statusleiste.
-4. **Spielgebiet-Polygon:** wird zur Build-Zeit als konvexe Hülle aus `stations.json` erzeugt
-   (`npm run build:area`). Damit ist das Gebiet automatisch konsistent mit der Stationsliste —
-   auch nachdem du Stationen nachgezogen hast. Ein handgezeichnetes `area.geojson` überschreibt es,
-   falls ihr das Gebiet später bewusst enger zieht.
+4. **Spielgebiet-Polygon:** wird zur Build-Zeit als konvexe Hülle über alle bespielbaren
+   Halte erzeugt (`npm run data:area`), die Aufpreis-Bahnhöfe eingeschlossen. Damit ist das
+   Gebiet automatisch konsistent mit der Haltestellenliste — auch nachdem du Halte nachgezogen
+   hast. Ein handgezeichnetes `area.geojson` überschreibt es, falls ihr das Gebiet später
+   bewusst enger zieht.
 
 ## 8. Status
 
 V1 und V2 sind umgesetzt und im Browser gegengeprüft.
 
-- 73 Stationen (44 Bahn, 39 Metro, 10 Umsteigeknoten)
-- 2008 Orte in 11 Kategorien
-- 69 Fragekarten, 38 davon auf der Karte zeichenbar, 4 automatisch als schwach erkannt
+- 459 Halte (63 Bahn, 29 Metro, 52 Tram, 300 Bus, 15 Fähre), davon 16 nur gegen Aufpreis;
+  alle liegen im Spielgebiet
+- 2006 Orte in 11 Kategorien
+- 69 Fragekarten, 38 davon auf der Karte zeichenbar, 3 automatisch als schwach erkannt
 
 ### Beim Bauen aufgefallen
 
@@ -284,8 +304,12 @@ V1 und V2 sind umgesetzt und im Browser gegengeprüft.
 - `fitBounds` auf einen einzelnen Punkt ergibt ein leeres Rechteck und damit die höchste
   Zoomstufe — bei Matching und Measuring war danach von der Geometrie nichts mehr zu
   sehen. Ohne Radius braucht es einen festen Ersatz-Umkreis.
-- OSM benennt Bahn und Metro am selben Knoten unterschiedlich („Amsterdam Centraal" vs.
-  „Centraal Station"). Stationen müssen räumlich zusammengeführt werden, nicht über den Namen.
+- Bahn und Metro am selben Knoten heissen unterschiedlich („Amsterdam Centraal" vs.
+  „Centraal Station") — in OSM wie in der kuratierten Liste. Halte müssen räumlich
+  zusammengeführt werden, nicht über den Namen.
+- „Ist dein nächster Bahnhof meiner?" galt als schwache Frage, weil der Hider per Regel an
+  einem Bahnhof stand. Mit Tram- und Bushaltestellen als Verstecken sagt sie wieder etwas
+  aus — sie zeichnet deshalb nur die 63 Bahnhöfe (`isStation`), nicht jeden Halt.
 - CARTO-Basiskarten verlangen inzwischen einen API-Key und schreiben sonst
   „API KEY REQUIRED" über die Kacheln.
 - Beim Prüfen der Zoomstufe über die Kachel-URLs täuscht die erste Kachel im DOM: beim

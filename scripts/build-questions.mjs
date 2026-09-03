@@ -66,12 +66,19 @@ const poiFile = JSON.parse(await readFile(POIS, 'utf8'))
 const stationFile = JSON.parse(await readFile(STATIONS, 'utf8'))
 
 const poiCounts = poiFile.pois.reduce((acc, p) => ({ ...acc, [p.category]: (acc[p.category] ?? 0) + 1 }), {})
-poiCounts.station = stationFile.stations.filter((s) => s.ticketValid !== false).length
+// „Rail Station" meint Bahnhöfe — die Liste enthält auch Tram- und Bushaltestellen.
+poiCounts.station = stationFile.stations.filter(
+  (s) => s.ticketValid !== false && s.isStation,
+).length
 
 /**
  * Wie aussagekräftig ist die Frage mit den tatsächlich vorhandenen Daten?
  * Gibt es nur einen Flughafen in der Region, lautet die Antwort auf "ist dein
  * nächster Flughafen meiner?" immer ja — die Frage verschenkt einen Zug.
+ *
+ * "Rail Station" galt früher als schwach, weil der Hider per Regel an einem
+ * Bahnhof stand. Seit auch Tram- und Bushaltestellen Verstecke sind, sagt die
+ * Frage wieder etwas aus.
  */
 function weaknessOf(viz, poiCategory) {
   if (!poiCategory) return null
@@ -82,7 +89,6 @@ function weaknessOf(viz, poiCategory) {
     if (count > 500) return `${count} in der Region — Antwort ist fast immer „nein"`
   }
   if (viz === 'poi-within' && count < 3) return `nur ${count} in der Region`
-  if (poiCategory === 'station') return 'der Hider steht per Regel an einer Station'
   return null
 }
 

@@ -44,9 +44,17 @@
       "label": "Metro",
       "color": "#c2410c"
     },
-    "light_rail": {
-      "label": "Sneltram",
+    "tram": {
+      "label": "Tram",
       "color": "#7c3aed"
+    },
+    "bus": {
+      "label": "Bus",
+      "color": "#15803d"
+    },
+    "ferry": {
+      "label": "Fähre",
+      "color": "#0891b2"
     }
   }
 }

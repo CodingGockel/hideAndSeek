@@ -1,23 +1,26 @@
 # Hide & Seek — Amsterdam
 
 Spielkarte für ein Hide-and-Seek-Spiel nach dem Vorbild von *Jet Lag: The Game*.
-Zeigt das Spielgebiet, alle bespielbaren Stationen und den 800-m-Radius, innerhalb
-dessen man sich an einer Station verstecken darf.
+Zeigt das Spielgebiet, alle bespielbaren Haltestellen und den 800-m-Radius, innerhalb
+dessen man sich an einer Haltestelle verstecken darf.
 
 Client-only, mobile-first, kein Server. Der Entwurf steht in [SPEC.md](SPEC.md).
 
 ## Was die App kann
 
 - Vollbild-Karte mit dem Spielgebiet als Overlay
-- Alle Bahn- und Metro-Stationen der Region, filterbar nach Verkehrsmittel
-- **Versteck-Radius**: 800 m um die gewählte Station, einzeln oder für alle auf einmal
+- Alle 459 bespielbaren Halte der Region — Bahn, Metro, Tram, Bus und Fähre —,
+  filterbar nach Verkehrsmittel
+- **Versteck-Radius**: 800 m um den gewählten Halt, einzeln oder für alle auf einmal
 - **Gültigkeitsprüfung**: „Gültiges Versteck — 300 m von Amsterdam Zuid" anhand des
   eigenen Standorts. Das ist die Frage, die man unterwegs tatsächlich hat.
 - **Standort von Hand setzen**: „Standort setzen" antippen, dann auf die Karte tippen.
   Der Punkt lässt sich anschliessend verschieben und ersetzt die Ortung, bis „GPS nutzen"
   gedrückt wird — praktisch zum Planen zu Hause und wenn das GPS im Zug daneben liegt.
   Er überlebt einen Neustart.
-- Stationsliste nach Entfernung sortiert, mit Suche
+- Haltestellenliste nach Entfernung sortiert, mit Suche
+- Halte ausserhalb des Ticketgebiets (Utrecht, Alkmaar, Hilversum …) sind als
+  „Aufpreis" markiert — bespielbar, aber die Fahrt dorthin kostet extra
 - **Drei Basiskarten** zum Umschalten: Standard, ÖPNV-Karte (zeigt die Linien) und Satellit
 - Marker mit Piktogramm des Verkehrsmittels; Umsteigeknoten wie Amsterdam Zuid tragen
   einen zweiten Ring in der Farbe der zweiten Linie
@@ -79,8 +82,8 @@ ausschliessen.
 
 ```bash
 npm run data            # alles neu erzeugen
-npm run data:stations   # Stationen aus OpenStreetMap
-npm run data:area       # Spielgebiet aus der Stationsliste
+npm run data:stations   # Haltestellen aus data/artt_verstecke.geojson
+npm run data:area       # Spielgebiet aus der Haltestellenliste
 npm run data:pois       # Orte für die Fragekarten (~2000 Objekte)
 npm run data:questions  # Fragekarten mit Zeichen-Metadaten
 ```
@@ -89,17 +92,21 @@ npm run data:questions  # Fragekarten mit Zeichen-Metadaten
 braucht `poi.json` und `stations.json`, um die schwachen Fragen zu erkennen — also nach
 den beiden anderen laufen lassen (`npm run data` macht das in der richtigen Reihenfolge).
 
-`public/data/stations.json` wird zur Laufzeit geladen und kann **direkt editiert werden,
-ohne neu zu bauen**. Alle gefundenen Stationen sind bespielbar. Soll eine doch nicht
-dabei sein, `ticketValid: false` setzen — sie verschwindet dann aus Karte und Liste.
+Quelle der Halte ist `data/artt_verstecke.geojson` — die kuratierte Liste aller mit dem
+Amsterdam & Region Travel Ticket erreichbaren Halte (Bahn, Metro und Fähre vollständig,
+Bus und Tram auf 650 m Abstand ausgedünnt, mit den bedienenden Linien). Wer die Liste
+ändern will, ändert diese Datei und lässt `npm run data:stations && npm run data:area`
+laufen.
 
-`ticketValid`, `lines` und `notes` überleben ein erneutes `npm run data`; die vorhandene
-Datei wird gemerged, nicht überschrieben.
+`public/data/stations.json` wird zur Laufzeit geladen und kann **direkt editiert werden,
+ohne neu zu bauen**. Alle Halte der Quelle sind bespielbar. Soll einer doch nicht dabei
+sein, `ticketValid: false` setzen — er verschwindet dann aus Karte und Liste.
+
+`ticketValid` und `notes` überleben ein erneutes `npm run data`; die vorhandene Datei
+wird gemerged, nicht überschrieben.
 
 Nach dem Bearbeiten `npm run data:area` laufen lassen, damit das Spielgebiet zur
-Stationsliste passt.
-
-Tram- und Bushaltestellen sind bewusst nicht enthalten (s. SPEC.md §7).
+Haltestellenliste passt. Alle bespielbaren Halte zählen dafür, auch die mit `extraCost`.
 
 ## Auf dem Handy installieren
 

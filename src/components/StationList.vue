@@ -14,12 +14,12 @@ const store = useGameStore()
       class="search"
       type="search"
       inputmode="search"
-      placeholder="Station suchen…"
-      aria-label="Station suchen"
+      placeholder="Haltestelle suchen…"
+      aria-label="Haltestelle suchen"
     />
 
     <p v-if="!store.listedStations.length" class="empty">
-      Keine Station gefunden. Suchbegriff oder Filter anpassen.
+      Keine Haltestelle gefunden. Suchbegriff oder Filter anpassen.
     </p>
 
     <ul class="list">
@@ -32,7 +32,7 @@ const store = useGameStore()
         >
           <span class="info">
             <span class="name">{{ station.name }}</span>
-            <ModeBadges :modes="station.modes" />
+            <ModeBadges :station="station" />
           </span>
           <span class="distance" :class="{ near: station.withinHidingRadius }">
             {{ formatDistance(station.distance) }}
