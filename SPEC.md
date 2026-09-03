@@ -303,12 +303,20 @@ DOM-Marker-Rendering beim Zoomen spürbar ruckelig, Canvas nicht.
 │                      +/− │
 │         KARTE            │  Vollbild, Spielgebiet abgesetzt
 │                          │
-│              [Standard]  │  Karte · Standort setzen · Alle Radien
+│           [Standard]  ‹  │  Karte · Standort setzen · Sucher · Alle Radien · Hell/Dunkel
 ├──────────────────────────┤
 │ ══ Bottom Sheet ══       │  peek: „12 Haltestellen in der Nähe"
 │ Haltestellen · Filter    │  halb: Liste  ·  voll: Detail
 └──────────────────────────┘
 ```
+
+Die Knopfleiste rechts fährt über den Pfeil an ihrem unteren Ende nach rechts aus dem Bild
+und gibt die Karte frei; der Zustand liegt bei den übrigen Einstellungen. Der Ortungsknopf
+bleibt aussen vor — er ist zugleich Anzeige und muss immer sichtbar sein.
+
+Das Bottom Sheet kennt drei Rastpunkte (peek · halb · voll). Ziehen und der Griff schalten
+wie gehabt; ein Tipp auf die leere Fläche rechts neben den Tabs fährt es ganz aus und aus
+dem ausgefahrenen Zustand wieder ganz ein — die zwei Extreme ohne Umweg über „halb".
 
 Ein Statusbalken über der Karte war der erste Entwurf; er kostete rund 56 px Höhe für
 eine Aussage, die in eine Farbe passt. Geblieben ist der Ortungsknopf oben rechts: er
@@ -320,7 +328,10 @@ Harte Regeln, weil das Ding im Zug mit einer Hand bedient wird:
 - `100dvh` statt `100vh`, plus `env(safe-area-inset-*)` — sonst verdeckt die iOS-Leiste die Controls
 - Touch-Targets ≥ 44 px, Fließtext ≥ 14 px
 - Alle primären Aktionen im unteren Bildschirmdrittel (Daumenzone)
-- Dark Mode über `prefers-color-scheme`, Basiskarte passend gewechselt
+- Dark Mode über `prefers-color-scheme`, Basiskarte passend gewechselt; ein Knopf in der
+  rechten Leiste überstimmt das Gerät (`data-theme` auf `<html>`, gemerkt wie die übrigen
+  Einstellungen). Die Karten-Overlays holen ihre Farben aus dem CSS und zeichnen nach
+  jedem Wechsel neu — egal ob Gerät oder Knopf ihn ausgelöst hat
 - `watchPosition` mit `enableHighAccuracy`, aber pausieren, wenn die Seite im Hintergrund ist (Akku)
 
 **Basiskarten:** drei zur Auswahl, alle ohne API-Key, konfiguriert in `config.json`:

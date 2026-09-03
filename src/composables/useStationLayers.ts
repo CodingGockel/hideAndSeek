@@ -1,9 +1,9 @@
-import { onUnmounted, watch, type Ref } from 'vue'
+import { watch, type Ref } from 'vue'
 import L from 'leaflet'
 import { useGameStore } from '../stores/game'
 import type { AppConfig, Station, TransportMode } from '../types/game'
 import { SHEET_HALF_RATIO } from '../lib/layout'
-import { cssColor } from '../lib/theme'
+import { cssColor, resolvedTheme } from '../lib/theme'
 
 /**
  * Ganze Welt als äusserer Ring — mit dem Spielgebiet als Loch ergibt das die
@@ -367,15 +367,13 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   watch(() => store.isManualPosition, drawUser)
   watch(() => store.seekerPosition, drawSeeker, { deep: true })
 
-  // Wechselt das Gerät zwischen hell und dunkel, gelten andere Overlay-Farben.
-  const themeQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  const onThemeChange = () => {
+  // Wechselt die Ansicht zwischen hell und dunkel, gelten andere Overlay-Farben.
+  // `resolvedTheme` deckt beide Auslöser ab: die Einstellung des Geräts und den Knopf.
+  watch(resolvedTheme, () => {
     drawArea()
     drawRadii()
     drawSeeker()
-  }
-  themeQuery.addEventListener('change', onThemeChange)
-  onUnmounted(() => themeQuery.removeEventListener('change', onThemeChange))
+  })
 
   /** Erstzeichnung, sobald die Karte existiert. */
   function bind() {

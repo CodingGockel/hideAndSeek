@@ -12,6 +12,7 @@ import ShareQuestion from './components/ShareQuestion.vue'
 import IncomingQuestion from './components/IncomingQuestion.vue'
 import SeekerPosition from './components/SeekerPosition.vue'
 import { parseAskHash } from './lib/share'
+import { applyTheme, resolvedTheme } from './lib/theme'
 import type { LatLon, Question, TransportMode } from './types/game'
 
 const store = useGameStore()
@@ -159,6 +160,36 @@ function onBack() {
   store.select(null)
 }
 
+/**
+ * Hell und dunkel.
+ *
+ * Ohne eigene Wahl folgt die App dem Gerät; der erste Druck kippt sie auf das Gegenteil
+ * dessen, was gerade zu sehen ist, und legt sie damit fest. Die Beschriftung nennt das
+ * Ziel des nächsten Drucks, nicht den aktuellen Zustand.
+ */
+watch(() => store.theme, applyTheme, { immediate: true })
+
+const theme = computed(() =>
+  resolvedTheme.value === 'dark'
+    ? { label: 'Hell', hint: 'Zu heller Ansicht wechseln' }
+    : { label: 'Dunkel', hint: 'Zu dunkler Ansicht wechseln' },
+)
+
+function toggleTheme() {
+  store.theme = resolvedTheme.value === 'dark' ? 'light' : 'dark'
+}
+
+/**
+ * Werkzeugleiste rechts ein- und ausfahren.
+ *
+ * Die Kartentyp-Auswahl wird dabei geschlossen: sie würde sonst mit hinausgeschoben und
+ * käme beim nächsten Ausklappen unerwartet wieder offen zum Vorschein.
+ */
+function toggleTools() {
+  store.toolsOpen = !store.toolsOpen
+  pickerOpen.value = false
+}
+
 function chooseBasemap(id: string) {
   store.basemapId = id
   pickerOpen.value = false
@@ -253,59 +284,87 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
         <button type="button" @click="store.placingPosition = false">Abbrechen</button>
       </p>
 
-      <div class="fabs">
-        <div v-if="pickerOpen" class="picker" role="radiogroup" aria-label="Kartentyp">
+      <div class="tools" :class="{ closed: !store.toolsOpen }">
+        <div class="fabs">
+          <div v-if="pickerOpen" class="picker" role="radiogroup" aria-label="Kartentyp">
+            <button
+              v-for="basemap in store.basemaps"
+              :key="basemap.id"
+              type="button"
+              class="picker-item"
+              :class="{ on: basemap.id === store.activeBasemap?.id }"
+              role="radio"
+              :aria-checked="basemap.id === store.activeBasemap?.id"
+              @click="chooseBasemap(basemap.id)"
+            >
+              {{ basemap.label }}
+            </button>
+          </div>
+
           <button
-            v-for="basemap in store.basemaps"
-            :key="basemap.id"
             type="button"
-            class="picker-item"
-            :class="{ on: basemap.id === store.activeBasemap?.id }"
-            role="radio"
-            :aria-checked="basemap.id === store.activeBasemap?.id"
-            @click="chooseBasemap(basemap.id)"
+            class="fab"
+            :aria-expanded="pickerOpen"
+            @click="pickerOpen = !pickerOpen"
           >
-            {{ basemap.label }}
+            {{ store.activeBasemap?.label ?? 'Karte' }}
+          </button>
+
+          <button
+            type="button"
+            class="fab"
+            :class="{ on: store.placingPosition || store.isManualPosition }"
+            :aria-pressed="store.placingPosition"
+            @click="store.placingPosition = !store.placingPosition"
+          >
+            Standort setzen
+          </button>
+
+          <button
+            type="button"
+            class="fab"
+            :class="{ on: !!store.seekerPosition }"
+            :aria-expanded="seekerOpen"
+            @click="seekerOpen = !seekerOpen"
+          >
+            Sucher
+          </button>
+
+          <button
+            type="button"
+            class="fab"
+            :class="{ on: store.showAllRadii }"
+            :aria-pressed="store.showAllRadii"
+            @click="store.showAllRadii = !store.showAllRadii"
+          >
+            Alle Radien
+          </button>
+
+          <button
+            type="button"
+            class="fab"
+            :title="theme.hint"
+            :aria-label="theme.hint"
+            @click="toggleTheme"
+          >
+            {{ theme.label }}
           </button>
         </div>
 
+        <!-- Der Pfeil ist das letzte Kind der rechtsbündigen Zeile und bleibt deshalb
+             in beiden Zuständen an derselben Stelle stehen. -->
         <button
           type="button"
-          class="fab"
-          :aria-expanded="pickerOpen"
-          @click="pickerOpen = !pickerOpen"
+          class="fab toggle"
+          :aria-expanded="store.toolsOpen"
+          :aria-label="store.toolsOpen ? 'Werkzeuge einklappen' : 'Werkzeuge ausklappen'"
+          @click="toggleTools"
         >
-          {{ store.activeBasemap?.label ?? 'Karte' }}
-        </button>
-
-        <button
-          type="button"
-          class="fab"
-          :class="{ on: store.placingPosition || store.isManualPosition }"
-          :aria-pressed="store.placingPosition"
-          @click="store.placingPosition = !store.placingPosition"
-        >
-          Standort setzen
-        </button>
-
-        <button
-          type="button"
-          class="fab"
-          :class="{ on: !!store.seekerPosition }"
-          :aria-expanded="seekerOpen"
-          @click="seekerOpen = !seekerOpen"
-        >
-          Sucher
-        </button>
-
-        <button
-          type="button"
-          class="fab"
-          :class="{ on: store.showAllRadii }"
-          :aria-pressed="store.showAllRadii"
-          @click="store.showAllRadii = !store.showAllRadii"
-        >
-          Alle Radien
+          <!-- Gestrichener Winkel statt gefülltem Pfeil: er sitzt genau um (12,12) und
+               bleibt deshalb beim Drehen an Ort und Stelle. -->
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.25 4.5 15.75 12l-7.5 7.5" />
+          </svg>
         </button>
       </div>
 
@@ -465,16 +524,44 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
   cursor: pointer;
 }
 
-.fabs {
+/* Rechtsbündige Zeile: links die Knöpfe, rechts der Pfeil. Weil der Container am rechten
+   Rand hängt, wachsen die Knöpfe nach links weg — der Pfeil steht in beiden Zuständen an
+   derselben Stelle. */
+.tools {
   position: absolute;
   right: 12px;
   bottom: 124px;
   z-index: 550;
   display: flex;
-  flex-direction: column;
   align-items: flex-end;
   gap: 8px;
 }
+
+.fabs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  /* Dieselbe Kurve wie beim Bottom Sheet, damit sich beides gleich anfühlt. */
+  transition:
+    transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.25s,
+    visibility 0s;
+}
+
+/* Eigene Breite + Gap + Pfeil + Randabstand: die Knöpfe stehen komplett ausserhalb des
+   Bildes, `.stage` schneidet sie ab. `visibility` erst am Ende der Fahrt, sonst sind sie
+   eingeklappt noch klickbar und per Tastatur erreichbar. */
+.tools.closed .fabs {
+  transform: translateX(calc(100% + 60px));
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.25s,
+    visibility 0s 0.25s;
+}
+
 
 .picker {
   display: flex;
@@ -524,6 +611,34 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
+}
+
+.toggle {
+  position: relative;
+  /* Über den Knöpfen, damit sie beim Ein- und Ausfahren hinter dem Pfeil durchlaufen. */
+  z-index: 1;
+  width: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Ein einziges Chevron, das sich dreht: nach rechts wegschieben, nach links herausholen.
+   Als Strich gezeichnet — so lässt sich die Dicke unabhängig von der Grösse einstellen. */
+.toggle svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  /* Im 24er-Raster auf 22 px: aus 3 Einheiten werden rund 2.75 px. */
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.25s;
+}
+
+.tools.closed .toggle svg {
+  transform: rotate(180deg);
 }
 
 .tabs {

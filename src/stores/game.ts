@@ -9,6 +9,7 @@ import type {
   TransportMode,
 } from '../types/game'
 import { distanceMeters } from '../lib/geo'
+import type { Theme } from '../lib/theme'
 
 const BASE = import.meta.env.BASE_URL
 const PREFS_KEY = 'hs.prefs.v2'
@@ -22,6 +23,10 @@ interface Prefs {
   senderName: string
   /** Der von Hand eingetragene Standort der Sucher. */
   seekerPosition: LatLon | null
+  /** Sind die Werkzeugknöpfe rechts ausgefahren? */
+  toolsOpen: boolean
+  /** Von Hand gewählte Ansicht; `null` folgt der Einstellung des Geräts. */
+  theme: Theme | null
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -31,6 +36,8 @@ const DEFAULT_PREFS: Prefs = {
   manualPosition: null,
   senderName: '',
   seekerPosition: null,
+  toolsOpen: true,
+  theme: null,
 }
 
 function loadPrefs(): Prefs {
@@ -59,6 +66,10 @@ export const useGameStore = defineStore('game', () => {
   const search = ref('')
   const activeModes = ref<Set<TransportMode>>(new Set(prefs.activeModes))
   const showAllRadii = ref(prefs.showAllRadii)
+  /** Ausgefahrene Werkzeugleiste rechts — eingeklappt gibt sie die Karte frei. */
+  const toolsOpen = ref(prefs.toolsOpen)
+  /** Von Hand gewählte Ansicht. `null` heisst: der Knopf wurde noch nie gedrückt. */
+  const theme = ref<Theme | null>(prefs.theme)
   const basemapId = ref<string | null>(prefs.basemapId)
   const senderName = ref(prefs.senderName)
 
@@ -94,7 +105,16 @@ export const useGameStore = defineStore('game', () => {
   const isManualPosition = computed(() => manualPosition.value !== null)
 
   watch(
-    [activeModes, showAllRadii, basemapId, manualPosition, senderName, seekerPosition],
+    [
+      activeModes,
+      showAllRadii,
+      basemapId,
+      manualPosition,
+      senderName,
+      seekerPosition,
+      toolsOpen,
+      theme,
+    ],
     () => {
       try {
         localStorage.setItem(
@@ -106,6 +126,8 @@ export const useGameStore = defineStore('game', () => {
             manualPosition: manualPosition.value,
             senderName: senderName.value,
             seekerPosition: seekerPosition.value,
+            toolsOpen: toolsOpen.value,
+            theme: theme.value,
           } satisfies Prefs),
         )
       } catch {
@@ -275,6 +297,8 @@ export const useGameStore = defineStore('game', () => {
     search,
     activeModes,
     showAllRadii,
+    toolsOpen,
+    theme,
     basemapId,
     senderName,
     basemaps,

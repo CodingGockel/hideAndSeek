@@ -26,8 +26,17 @@
   color-scheme: light dark;
 }
 
+/*
+ * Dunkle Palette.
+ *
+ * Sie steht zweimal da, weil eine Regel nicht gleichzeitig innerhalb und ausserhalb einer
+ * Media Query gelten kann: einmal für Geräte im Dunkelmodus (sofern der Knopf nicht auf
+ * hell steht), einmal für die von Hand gewählte dunkle Ansicht. Das `data-theme` setzt
+ * `applyTheme()` in `lib/theme.ts`; ohne Wahl fehlt das Attribut und es bleibt bei dem,
+ * was das Gerät sagt.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --surface: #1e293b;
     --surface-sunken: #0f172a;
     --border: #334155;
@@ -49,6 +58,34 @@
     --radius-all: rgb(56 189 248 / 0.16);
     --preview: #e2e8f0;
   }
+}
+
+:root[data-theme='dark'] {
+  --surface: #1e293b;
+  --surface-sunken: #0f172a;
+  --border: #334155;
+  --border-strong: #475569;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-soft: #1e3a5f;
+  --on-accent: #0f172a;
+  --ok: #4ade80;
+  --ok-soft: #14532d;
+  --bad: #f87171;
+  --bad-soft: #7f1d1d;
+
+  --area-outside: rgb(0 0 0 / 0.5);
+  --area-border: #f87171;
+  --radius-all: rgb(56 189 248 / 0.16);
+  --preview: #e2e8f0;
+
+  color-scheme: dark;
+}
+
+/* Damit auch Scrollbalken und Formularelemente der Wahl folgen und nicht dem Gerät. */
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 * {
@@ -96,13 +133,18 @@ button {
   filter: saturate(0.72) contrast(0.96);
 }
 
+/* Invertieren und den Farbkreis zurückdrehen macht aus der hellen Karte eine
+   dunkle, bei der Grün und Blau ihre Bedeutung behalten. Für Luftbilder wäre
+   das ein Negativ, deshalb greift es nur bei gezeichneten Karten.
+   Zweimal notiert wie die dunkle Palette oben — Gerät und Knopf. */
 @media (prefers-color-scheme: dark) {
-  /* Invertieren und den Farbkreis zurückdrehen macht aus der hellen Karte eine
-     dunkle, bei der Grün und Blau ihre Bedeutung behalten. Für Luftbilder wäre
-     das ein Negativ, deshalb greift es nur bei gezeichneten Karten. */
-  .leaflet-tile-pane .basemap-drawn {
+  :root:not([data-theme='light']) .leaflet-tile-pane .basemap-drawn {
     filter: invert(1) hue-rotate(180deg) saturate(0.6) brightness(0.92);
   }
+}
+
+:root[data-theme='dark'] .leaflet-tile-pane .basemap-drawn {
+  filter: invert(1) hue-rotate(180deg) saturate(0.6) brightness(0.92);
 }
 
 /* Stationsmarker. Die Icons entstehen in Leaflet ausserhalb von Vue, deshalb

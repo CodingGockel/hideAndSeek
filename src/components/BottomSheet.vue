@@ -17,6 +17,10 @@ const snapIndex = ref(0)
 
 let startPointerY = 0
 let startOffset = 0
+/** Beim Drücken gemerkt: nach `setPointerCapture` zeigt `event.target` nur noch auf die
+    Kopfzeile, das ursprüngliche Ziel wäre bei `pointerup` also nicht mehr zu erkennen. */
+let startTarget: HTMLElement | null = null
+let moved = false
 
 /** Verschiebung in px, von unten gemessen: gross = eingeklappt, 0 = ganz offen. */
 function snapPoints(): number[] {
@@ -38,6 +42,8 @@ function onPointerDown(event: PointerEvent) {
   dragging.value = true
   startPointerY = event.clientY
   startOffset = offset.value
+  startTarget = event.target as HTMLElement
+  moved = false
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
@@ -45,12 +51,21 @@ function onPointerMove(event: PointerEvent) {
   if (!dragging.value) return
   const points = snapPoints()
   const next = startOffset + (event.clientY - startPointerY)
+  // Kleine Schwelle: ein Wackeln beim Tippen darf nicht schon als Ziehen zählen.
+  if (Math.abs(event.clientY - startPointerY) > 6) moved = true
   offset.value = Math.min(Math.max(next, 0), points[0])
 }
 
 function onPointerUp() {
   if (!dragging.value) return
   dragging.value = false
+
+  // Getippt statt gezogen, und nicht auf Griff oder Tabs: die leere Fläche der Kopfzeile.
+  if (!moved && !startTarget?.closest('button')) {
+    toggleFull()
+    return
+  }
+
   const points = snapPoints()
   // Zum nächstgelegenen Rastpunkt einschnappen.
   let nearest = 0
@@ -58,6 +73,14 @@ function onPointerUp() {
     if (Math.abs(point - offset.value) < Math.abs(points[nearest] - offset.value)) nearest = i
   })
   applySnap(nearest)
+}
+
+/**
+ * Tippen auf die leere Fläche der Kopfzeile: ganz auf, und vom ganz offenen Sheet aus
+ * wieder ganz zu. Der Zwischenschritt „halb" bleibt dem Griff und dem Ziehen vorbehalten.
+ */
+function toggleFull() {
+  applySnap(snapIndex.value === snapPoints().length - 1 ? 0 : snapPoints().length - 1)
 }
 
 /** Tippen auf den Griff schaltet durch die Rastpunkte — schneller als ziehen. */
