@@ -79,8 +79,15 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 
 defineExpose({ expand: () => applySnap(1), collapse: () => applySnap(0) })
 
+/**
+ * Das Padding hält den Scroll-Viewport von `.body` deckungsgleich mit dem sichtbaren
+ * Teil des Sheets — ohne es reicht die Liste unter den Bildschirmrand und ihr Ende
+ * bleibt unerreichbar. Dank `box-sizing: border-box` bleibt `offsetHeight` konstant,
+ * die Rastpunkte rechnen also unverändert.
+ */
 const style = computed(() => ({
   transform: `translateY(${offset.value}px)`,
+  paddingBottom: `${offset.value}px`,
   transition: dragging.value ? 'none' : 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)',
 }))
 </script>
