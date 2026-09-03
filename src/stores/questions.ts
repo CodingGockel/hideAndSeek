@@ -68,6 +68,20 @@ export const useQuestionStore = defineStore('questions', () => {
    */
   const preview = ref<Constraint | null>(null)
 
+  /**
+   * Eine Frage, die per Link hereingekommen ist. Die Geometrie dazu liegt als
+   * `preview` — gespeichert wird sie nicht, denn sie gehört dem Fragenden, nicht uns.
+   * Hier steht nur, was das Overlay an Text braucht.
+   */
+  const incoming = ref<{
+    questionId: string
+    senderName: string
+    /** Standort des Fragenden. Steht auch hier, weil Karten ohne Geometrie
+     *  („Photos") keine Vorschau anlegen, der Punkt aber trotzdem gezeigt wird. */
+    origin: LatLon
+    radiusMeters: number | null
+  } | null>(null)
+
   watch(usedIds, () => writeStored(USED_KEY, [...usedIds.value]), { deep: true })
   watch(constraints, () => writeStored(CONSTRAINTS_KEY, constraints.value), { deep: true })
 
@@ -181,6 +195,47 @@ export const useQuestionStore = defineStore('questions', () => {
 
   function clearPreview() {
     preview.value = null
+    incoming.value = null
+  }
+
+  /**
+   * Eine per Link erhaltene Frage anzeigen.
+   *
+   * Anders als `setPreview` zeichnet sie auch das Thermometer: dessen zweiter Punkt
+   * fehlt zwar, aber der Standort des Fragenden ist für sich schon die halbe Aussage.
+   * `compareToUser` schaltet die Vergleichslinien zur eigenen Position frei.
+   */
+  function setIncoming(
+    question: Question,
+    origin: LatLon,
+    radiusMeters: number | null,
+    senderName: string,
+  ): Constraint | null {
+    incoming.value = { questionId: question.id, senderName, origin, radiusMeters }
+
+    if (question.viz === 'none') {
+      preview.value = null
+      return null
+    }
+
+    preview.value = {
+      id: '__preview',
+      questionId: question.id,
+      categoryId: categoryOfQuestion.value.get(question.id)?.id ?? '',
+      label: question.label,
+      viz: question.viz,
+      origin,
+      radiusMeters: radiusMeters ?? question.radiusMeters ?? null,
+      poiCategory: question.poiCategory,
+      answer: '',
+      visible: true,
+      color: PREVIEW_COLOR,
+      createdAt: Date.now(),
+      preview: true,
+      compareToUser: true,
+      senderName,
+    }
+    return preview.value
   }
 
   function addConstraint(
@@ -248,6 +303,7 @@ export const useQuestionStore = defineStore('questions', () => {
     constraints,
     search,
     preview,
+    incoming,
     allQuestions,
     questionById,
     categoryOfQuestion,
@@ -258,6 +314,7 @@ export const useQuestionStore = defineStore('questions', () => {
     visibleConstraints,
     awaitingTarget,
     setPreview,
+    setIncoming,
     clearPreview,
     setConstraintPoint,
     load,

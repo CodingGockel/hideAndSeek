@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useQuestionStore } from '../stores/questions'
-import type { Question, QuestionCategory } from '../types/game'
+import { ANSWER_LABELS, answersFor } from '../lib/share'
+import type { Question } from '../types/game'
 
 const emit = defineEmits<{
   show: [question: Question, answer: string, radiusMeters: number | null]
   preview: [question: Question | null, radiusMeters: number | null]
+  share: [question: Question, radiusMeters: number | null]
 }>()
 
 const store = useQuestionStore()
@@ -49,24 +51,14 @@ function onCustomRadiusChange(question: Question) {
 }
 
 /**
- * Die Antworten, zwischen denen die Karte unterscheiden kann.
- *
- * Tentacles beantwortet man mit einem Ortsnamen, nicht mit ja/nein — dort gibt es
- * nichts zu wählen, die Karte zeigt einfach die Orte im Umkreis.
+ * Verschicken kann man jede Karte — auch die, die auf der Karte nichts zeigt. Gerade
+ * die Photos-Karten leben davon, dass der andere sie überhaupt erst zu sehen bekommt.
  */
-function answersFor(category: QuestionCategory, question: Question): string[] {
-  if (question.viz === 'poi-within') return ['within']
-  return category.answers.slice(0, 2)
-}
-
-const ANSWER_LABELS: Record<string, string> = {
-  yes: 'Ja',
-  no: 'Nein',
-  closer: 'Näher',
-  further: 'Weiter',
-  hotter: 'Wärmer',
-  colder: 'Kälter',
-  within: 'Orte im Umkreis zeigen',
+function onShare(question: Question) {
+  // Der frei gewählte Radius gilt nur für die eine Radar-Karte, die keinen mitbringt.
+  // Sonst stünde er auch an einer Photos-Karte im Link und hiesse dort nichts.
+  const custom = question.viz === 'radius' && question.radiusMeters == null
+  emit('share', question, question.radiusMeters ?? (custom ? customRadius.value : null))
 }
 </script>
 
@@ -118,6 +110,18 @@ const ANSWER_LABELS: Record<string, string> = {
               {{ question.label }}
               <span v-if="question.weak" class="weak" :title="question.weak">schwach</span>
             </span>
+
+            <button
+              type="button"
+              class="send"
+              :aria-label="`${question.label} verschicken`"
+              title="Frage mit meinem Standort verschicken"
+              @click="onShare(question)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 21 23 12 2 3v7l15 2-15 2z" />
+              </svg>
+            </button>
 
             <button
               v-if="question.viz !== 'none'"
@@ -316,6 +320,28 @@ const ANSWER_LABELS: Record<string, string> = {
 .show.open {
   background: var(--accent);
   color: var(--on-accent);
+}
+
+/* Papierflieger statt Wort: neben Label und „Karte" ist in einer 44-px-Zeile kein
+   Platz mehr für einen dritten Text. */
+.send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.send svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
 }
 
 .no-viz {

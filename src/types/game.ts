@@ -162,4 +162,12 @@ export interface Constraint {
   createdAt: number
   /** Noch nicht bestätigt: wird neutral gezeichnet und nicht gespeichert. */
   preview?: boolean
+  /**
+   * Die Frage kam von jemand anderem: zusätzlich zur Geometrie werden gestrichelte
+   * Linien von der eigenen Position zu den Punkten gezogen, die die Antwort
+   * entscheiden. Ein Flag und keine Koordinate, damit die Linien dem GPS folgen.
+   */
+  compareToUser?: boolean
+  /** Wer gefragt hat — für den Tooltip am fremden Standort. */
+  senderName?: string
 }

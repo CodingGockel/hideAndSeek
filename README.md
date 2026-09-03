@@ -27,6 +27,9 @@ Client-only, mobile-first, kein Server. Der Entwurf steht in [SPEC.md](SPEC.md).
 - **Fragenliste** mit allen 69 Fragekarten, durchsuchbar und einzeln abhakbar
 - **Fragen auf der Karte**: 38 der 69 Karten lassen sich zeichnen, beliebig viele
   gleichzeitig und in eigenen Farben
+- **Fragen verschicken**: ein Knopf je Karte baut die WhatsApp-Nachricht samt eigener
+  Koordinaten und einem Link, der die Frage beim Empfänger wieder aufmacht — mit
+  gestrichelten Vergleichslinien zu seinem eigenen Standort
 
 ## Loslegen
 
@@ -77,6 +80,41 @@ etwa „gleicher nächster Flughafen?" (es gibt nur Schiphol, die Antwort ist im
 Radar- und Thermometer-Werte sind metrisch und auf euer Gebiet zugeschnitten (500 m bis
 40 km) statt der Original-Meilen bis 161 km, die bei 45 × 40 km Spielgebiet nichts mehr
 ausschliessen.
+
+### Eine Frage verschicken
+
+Der Papierflieger neben einer Karte öffnet die fertige Nachricht:
+
+```
+Team Rot fragt — Radar
+Bist du im Umkreis von 2 km um mich?
+Mein Standort: 52.37897, 4.90042
+https://www.google.com/maps?q=52.37897,4.90042
+In der App beantworten: https://…/#v=1&q=radar%3A2-km&o=52.37897%2C4.90042&r=2000&n=Team+Rot
+```
+
+„WhatsApp" öffnet die Chat-Auswahl mit vorbefülltem Text, „Kopieren" legt ihn in die
+Zwischenablage; beides hakt die Karte gleich als genutzt ab. Der Absendername wird einmal
+eingetragen und gemerkt — nützlich, wenn mehrere Sucher-Teams in dieselbe Gruppe
+schreiben. Ohne Ortung wird die Kartenmitte verschickt, und die App sagt das auch.
+
+Der Knopf sitzt an **jeder** Karte, auch an den nicht zeichenbaren: gerade die
+Photos-Karten müssen verschickt werden.
+
+### Eine Frage beantworten
+
+Wer den Link antippt, landet in der App bei der Frage: der Standort des Fragenden liegt
+als fester Punkt A auf der Karte, dazu seine Geometrie — und **von der eigenen Position
+eine gestrichelte Linie mit Entfernung zu jedem Punkt, der die Antwort entscheidet**.
+Bei Radar ist das der Fragende selbst, bei Matching und Measuring der jeweils nächste
+Ort auf beiden Seiten, bei Tentacles der nächste Ort im Kreis — dessen Name steht
+zusätzlich im Klartext da, denn er *ist* die Antwort.
+
+Geantwortet wird im Chat. Die Ja/Nein-Knöpfe in der Karte legen die Einschränkung nur
+lokal an — praktisch für ein zweites Sucher-Team, das denselben Link bekommen hat.
+
+Das Thermometer verschickt nur den aktuellen Punkt; woher der Sucher losgefahren ist,
+steht in der Nachricht davor.
 
 ## Stationsdaten pflegen
 
@@ -140,6 +178,7 @@ scripts/                Datenerzeugung; scripts/lib/overpass.mjs teilen sich die
 src/composables/        Leaflet-Instanz, Stationsebenen, Fragen-Geometrie, Ortung
 src/stores/game.ts      Stationen, Karte, Standort
 src/stores/questions.ts Fragekarten, Häkchen, Einschränkungen
+src/lib/share.ts        Nachrichtentext, Link-Schema, deutsche Fragesätze
 ```
 
 `config.json` enthält den Versteck-Radius, den Kartenausschnitt, die Liste der Basiskarten

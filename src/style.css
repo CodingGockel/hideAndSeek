@@ -308,3 +308,19 @@ button {
 .leaflet-tooltip-top::before {
   border-top-color: var(--border);
 }
+
+/* Entfernung an einer Vergleichslinie. Sie liegt mitten auf der Karte, deshalb
+   kompakt und ohne Sprechblasen-Spitze — sie zeigt nicht auf einen Punkt, sondern
+   beschriftet eine Strecke. */
+.leaflet-tooltip.distance-label {
+  padding: 1px 6px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.distance-label::before {
+  display: none;
+}

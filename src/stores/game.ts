@@ -17,6 +17,8 @@ interface Prefs {
   showAllRadii: boolean
   basemapId: string | null
   manualPosition: { lat: number; lon: number } | null
+  /** Name, unter dem verschickte Fragen im Chat auftauchen ("Team Rot"). */
+  senderName: string
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -24,6 +26,7 @@ const DEFAULT_PREFS: Prefs = {
   showAllRadii: false,
   basemapId: null,
   manualPosition: null,
+  senderName: '',
 }
 
 function loadPrefs(): Prefs {
@@ -53,6 +56,7 @@ export const useGameStore = defineStore('game', () => {
   const activeModes = ref<Set<TransportMode>>(new Set(prefs.activeModes))
   const showAllRadii = ref(prefs.showAllRadii)
   const basemapId = ref<string | null>(prefs.basemapId)
+  const senderName = ref(prefs.senderName)
 
   /** Was die Ortung liefert. */
   const gpsPosition = ref<{ lat: number; lon: number; accuracy: number } | null>(null)
@@ -77,7 +81,7 @@ export const useGameStore = defineStore('game', () => {
   const isManualPosition = computed(() => manualPosition.value !== null)
 
   watch(
-    [activeModes, showAllRadii, basemapId, manualPosition],
+    [activeModes, showAllRadii, basemapId, manualPosition, senderName],
     () => {
       try {
         localStorage.setItem(
@@ -87,6 +91,7 @@ export const useGameStore = defineStore('game', () => {
             showAllRadii: showAllRadii.value,
             basemapId: basemapId.value,
             manualPosition: manualPosition.value,
+            senderName: senderName.value,
           } satisfies Prefs),
         )
       } catch {
@@ -248,6 +253,7 @@ export const useGameStore = defineStore('game', () => {
     activeModes,
     showAllRadii,
     basemapId,
+    senderName,
     basemaps,
     activeBasemap,
     gpsPosition,

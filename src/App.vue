@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGameStore } from './stores/game'
 import { useQuestionStore } from './stores/questions'
 import { useGeolocation } from './composables/useGeolocation'
@@ -9,7 +9,10 @@ import StationList from './components/StationList.vue'
 import StationDetail from './components/StationDetail.vue'
 import QuestionList from './components/QuestionList.vue'
 import ConstraintList from './components/ConstraintList.vue'
-import type { Question, TransportMode } from './types/game'
+import ShareQuestion from './components/ShareQuestion.vue'
+import IncomingQuestion from './components/IncomingQuestion.vue'
+import { parseAskHash } from './lib/share'
+import type { LatLon, Question, TransportMode } from './types/game'
 
 const store = useGameStore()
 const questions = useQuestionStore()
@@ -22,10 +25,54 @@ const mapRef = ref<InstanceType<typeof GameMap> | null>(null)
 const sheetRef = ref<InstanceType<typeof BottomSheet> | null>(null)
 const pickerOpen = ref(false)
 
+/** Frage, die gerade verschickt wird — samt eingefrorenem Bezugspunkt. */
+const shareTarget = ref<{
+  question: Question
+  origin: LatLon
+  radiusMeters: number | null
+} | null>(null)
+
 onMounted(() => {
   store.load()
-  questions.load()
+  // Erst nach dem Laden: vorher ist die Fragenliste leer und ein Link nicht auflösbar.
+  questions.load().then(applyIncomingLink)
+  window.addEventListener('hashchange', applyIncomingLink)
 })
+
+onUnmounted(() => window.removeEventListener('hashchange', applyIncomingLink))
+
+/**
+ * Eine per WhatsApp geschickte Frage öffnen.
+ *
+ * Der Link trägt alles im Fragment (`#v=1&q=…`), damit ein statischer Host nichts
+ * umschreiben muss. Läuft die App schon, kommt derselbe Weg über `hashchange`.
+ */
+const linkError = ref<string | null>(null)
+
+function applyIncomingLink() {
+  const link = parseAskHash(window.location.hash)
+  if (!link) return
+
+  // Sonst reisst ein Neuladen dieselbe Frage wieder auf.
+  history.replaceState(null, '', window.location.pathname + window.location.search)
+
+  const question = questions.questionById.get(link.questionId)
+  if (!question) {
+    linkError.value = `Unbekannte Frage im Link: ${link.questionId}`
+    return
+  }
+
+  linkError.value = null
+  const preview = questions.setIncoming(question, link.origin, link.radiusMeters, link.senderName)
+
+  tab.value = 'questions'
+  sheetRef.value?.expand()
+  if (preview) mapRef.value?.focusConstraint(preview.id)
+
+  // Ohne eigene Position gibt es weder Entfernung noch Vergleichslinien — und genau
+  // dafür ist der Link da.
+  if (!store.userPosition) geo.start()
+}
 
 watch(geo.fix, (fix) => {
   store.gpsPosition = fix
@@ -158,6 +205,15 @@ function onShowQuestion(question: Question, answer: string, radiusMeters: number
   else mapRef.value?.focusConstraint(constraint.id)
 }
 
+function onShareQuestion(question: Question, radiusMeters: number | null) {
+  const origin = originForQuestion()
+  if (!origin) return
+  shareTarget.value = { question, origin, radiusMeters }
+  // Der Knopf sitzt im aufgeklappten Sheet, und das liegt über allem anderen — ohne
+  // Einklappen wäre das Overlay hinter der Liste, aus der es aufgerufen wurde.
+  sheetRef.value?.collapse()
+}
+
 function onFocusConstraint(id: string) {
   mapRef.value?.focusConstraint(id)
   sheetRef.value?.collapse()
@@ -183,6 +239,10 @@ function onFocusConstraint(id: string) {
       <p v-if="store.loading" class="overlay">Lade Spieldaten…</p>
       <p v-else-if="store.error" class="overlay error">
         Spieldaten konnten nicht geladen werden: {{ store.error }}
+      </p>
+      <p v-else-if="linkError" class="overlay error">
+        {{ linkError }}
+        <button type="button" @click="linkError = null">OK</button>
       </p>
       <p v-else-if="geoNotice" class="overlay error">
         {{ geoNotice }}
@@ -247,6 +307,14 @@ function onFocusConstraint(id: string) {
         </button>
       </div>
 
+      <ShareQuestion
+        v-if="shareTarget"
+        :question="shareTarget.question"
+        :origin="shareTarget.origin"
+        :radius-meters="shareTarget.radiusMeters"
+        @close="shareTarget = null"
+      />
+
       <BottomSheet ref="sheetRef">
         <template #header>
           <div class="tabs">
@@ -293,8 +361,17 @@ function onFocusConstraint(id: string) {
         </template>
 
         <template v-else>
+          <IncomingQuestion
+            v-if="questions.incoming"
+            @locate="geo.start()"
+            @answered="sheetRef?.collapse()"
+          />
           <ConstraintList @focus="onFocusConstraint" />
-          <QuestionList @show="onShowQuestion" @preview="onPreviewQuestion" />
+          <QuestionList
+            @show="onShowQuestion"
+            @preview="onPreviewQuestion"
+            @share="onShareQuestion"
+          />
         </template>
       </BottomSheet>
     </main>

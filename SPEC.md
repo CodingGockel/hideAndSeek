@@ -89,6 +89,61 @@ Nicht zeichenbar bleiben Verwaltungsgrenzen, Küstenlinie, Gewässer, Bahn- und
 Strassenlinien sowie Höhe über NN — die brauchen Polygon- und Liniengeometrie und lassen
 sich später ergänzen, ohne den Unterbau zu ändern.
 
+### V4 — Fragen verschicken (umgesetzt)
+
+Fast jede Karte fragt nach dem Verhältnis zweier Standorte — ohne die Koordinaten des
+Suchers ist sie nicht zu beantworten. Bisher lief das über den Chat, von Hand
+abgetippt. Jetzt baut die App die Nachricht selbst:
+
+```
+Team Rot fragt — Radar
+Bist du im Umkreis von 2 km um mich?
+Mein Standort: 52.37897, 4.90042
+https://www.google.com/maps?q=52.37897,4.90042
+In der App beantworten: https://…/#v=1&q=radar%3A2-km&o=52.37897%2C4.90042&r=2000&n=Team+Rot
+```
+
+Vier Zeilen mit je einem Zweck: wer fragt und was, wo er steht, derselbe Punkt für alle
+ohne die App, und der Link für alle mit ihr. Der Knopf sitzt an **jeder** Karte, auch an
+den nicht zeichenbaren — die Photos-Karten leben gerade davon, verschickt zu werden.
+
+**Nur der Hinweg.** Die Antwort kommt als normale Chat-Nachricht zurück und wird wie
+bisher über die Ja/Nein-Knöpfe eingetragen. Ein Antwort-Link wäre der nächste Schritt
+(`&a=<answer>` ist im Schema frei), spart aber nur einen Tastendruck.
+
+**Link-Schema.** Alles steckt im Fragment, nicht im Query-String: so braucht der
+statische Host keine Umschreibregel, und die Koordinaten stehen in keinem Server-Log.
+
+| | |
+|---|---|
+| `v` | Schema-Version. Passt sie nicht, wird der Link verworfen statt halb gelesen |
+| `q` | `Question.id` — daraus kommen Label, Visualisierung und POI-Bezug |
+| `o` | Standort des Fragenden, 5 Nachkommastellen (≈ 1 m) |
+| `r` | Radius, nur wenn die Karte keinen mitbringt (`radar:frei-waehlbar`) |
+| `n` | Absendername, optional |
+| `t` | reserviert für den Zielpunkt des Thermometers |
+
+**Beim Empfänger** öffnet der Link die Frage als Vorschau: die Geometrie des Fragenden,
+sein Standort als fester Punkt A — dort ist er eine Tatsache aus der Nachricht und kein
+Regler — und dazu **von der eigenen Position eine gestrichelte Linie zu jedem Punkt, der
+die Antwort entscheidet**, beschriftet mit der Entfernung.
+
+| Kartentyp | Linie(n) von der eigenen Position zu |
+|---|---|
+| Radar | dem Standort des Fragenden — im Kreis oder nicht, die Zahl macht es eindeutig |
+| Matching | dem eigenen nächsten Ort. Läuft die zweite Linie auf denselben Marker, heisst die Antwort „ja" |
+| Measuring | dem eigenen nächsten Ort; die beiden beschrifteten Linien nebeneinander sind „näher" oder „weiter" |
+| Tentacles | dem nächsten Ort **im Kreis des Fragenden** — dessen Name *ist* die Antwort, deshalb steht er auch im Klartext in der Karte |
+| Thermometer | dem Startpunkt (der Zielpunkt fehlt, s. u.) |
+
+Die App zeigt damit alles, was zur Antwort nötig ist, behauptet sie aber nicht — das
+bleibt beim Spieler, wie schon bei den Einschränkungen.
+
+**Grenzen.** Das Thermometer bräuchte Start- *und* Endpunkt; verschickt wird nur der
+aktuelle. Woher der Sucher losgefahren ist, steht ohnehin in der vorherigen Nachricht,
+und es betrifft 3 von 69 Karten. Eine feste WhatsApp-Gruppe lässt sich nicht adressieren
+— `wa.me` kennt nur einen Chat-Picker oder eine Telefonnummer, keine Gruppen-ID.
+
 ### V3 — Flüche
 - Fluch-Katalog aus JSON, aktive Flüche mit Timer
 - Freies Radien-Zeichenwerkzeug auf der Karte
@@ -292,7 +347,8 @@ Alkmaar. Wer einen Halt ganz ausschliessen will, setzt `ticketValid: false` in
 
 ## 8. Status
 
-V1 und V2 sind umgesetzt und im Browser gegengeprüft.
+V1, V2 und V4 sind umgesetzt; V1/V2 im Browser gegengeprüft, V4 headless gegen den
+echten Datenstand (Link-Rundlauf über alle 69 Karten, Sende- und Empfangsweg im DOM).
 
 - 459 Halte (63 Bahn, 29 Metro, 52 Tram, 300 Bus, 15 Fähre), davon 16 nur gegen Aufpreis;
   alle liegen im Spielgebiet
@@ -319,3 +375,15 @@ V1 und V2 sind umgesetzt und im Browser gegengeprüft.
   „API KEY REQUIRED" über die Kacheln.
 - Beim Prüfen der Zoomstufe über die Kachel-URLs täuscht die erste Kachel im DOM: beim
   Zoomen bleiben alte stehen. Nur die höchste vorhandene Stufe ist die aktuelle.
+- Das Bottom Sheet liegt mit `z-index: 700` über allem. Ein Overlay, das aus ihm heraus
+  aufgerufen wird, muss es einklappen — sonst erscheint es hinter der Liste, aus der man
+  es gerade geöffnet hat.
+- `history.replaceState` löst kein `hashchange` aus. Deshalb kann das Fragment nach dem
+  Lesen gefahrlos geleert werden, ohne dass sich der Link selbst noch einmal auslöst.
+- Permanente Leaflet-Tooltips erscheinen auch an Linien mit `interactive: false` — genau
+  das, was eine Streckenbeschriftung braucht, die nicht angeklickt werden soll.
+- Der frei wählbare Radar-Radius steckt in der Fragenliste und galt versehentlich auch
+  für Karten ohne Radius; im Link stand dann `r=3000` an einer Photos-Karte.
+- `watchPosition` liefert im Sekundentakt. Solange eine erhaltene Frage offen ist, hängt
+  daran ein Neuzeichnen — bei Measuring über tausend Kreise. Unter 20 m Bewegung wird
+  deshalb nicht neu gezeichnet; das ist feiner, als die Entfernungsangabe auflöst.

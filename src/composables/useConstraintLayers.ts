@@ -2,10 +2,10 @@ import { watch, type Ref } from 'vue'
 import L from 'leaflet'
 import { useQuestionStore } from '../stores/questions'
 import { useGameStore } from '../stores/game'
-import { bisectorLine, distanceMeters, halfPlanePolygon, nearest } from '../lib/geo'
+import { bisectorLine, distanceMeters, formatDistance, halfPlanePolygon, nearest } from '../lib/geo'
 import { SHEET_HALF_RATIO } from '../lib/layout'
 import { cssColor } from '../lib/theme'
-import type { Constraint } from '../types/game'
+import type { Constraint, LatLon } from '../types/game'
 
 /**
  * Zeichnet die beantworteten Fragen als Geometrie.
@@ -99,27 +99,43 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     return INCLUSIVE.has(constraint.answer)
   }
 
-  /** Verschiebbarer Griff für Bezugs- und Zielpunkt. */
+  /**
+   * Verschiebbarer Griff für Bezugs- und Zielpunkt.
+   *
+   * Bei einer per Link erhaltenen Frage bleibt er fest: der Standort des Fragenden ist
+   * eine Tatsache aus der Nachricht, kein Regler. (Verschieben ginge dort ohnehin ins
+   * Leere — `setConstraintPoint` läuft über die gespeicherten Einschränkungen, die
+   * Vorschau ist keine davon, der Griff spränge beim Neuzeichnen zurück.)
+   */
   function handleFor(constraint: Constraint, which: 'origin' | 'target', point: L.LatLngExpression) {
-    return L.marker(point, {
+    const foreign = constraint.compareToUser === true
+    const who = constraint.senderName?.trim()
+
+    const marker = L.marker(point, {
       pane: HANDLE_PANE,
-      draggable: true,
+      draggable: !foreign,
       keyboard: false,
       icon: L.divIcon({
         className: 'constraint-handle-host',
-        html: `<span class="constraint-handle" style="--c:${constraint.color}">${which === 'origin' ? 'A' : 'B'}</span>`,
+        html: `<span class="constraint-handle" style="--c:${colorOf(constraint)}">${which === 'origin' ? 'A' : 'B'}</span>`,
         iconSize: [22, 22],
         iconAnchor: [11, 11],
       }),
+    }).bindTooltip(
+      foreign
+        ? `Standort von ${who || 'den Suchern'}`
+        : which === 'origin'
+          ? `${constraint.label} — Fragepunkt`
+          : `${constraint.label} — Zielpunkt`,
+      { direction: 'top', offset: [0, -12] },
+    )
+
+    if (foreign) return marker
+
+    return marker.on('dragend', (event) => {
+      const { lat, lng } = (event.target as L.Marker).getLatLng()
+      store.setConstraintPoint(constraint.id, which, { lat, lon: lng })
     })
-      .bindTooltip(
-        which === 'origin' ? `${constraint.label} — Fragepunkt` : `${constraint.label} — Zielpunkt`,
-        { direction: 'top', offset: [0, -12] },
-      )
-      .on('dragend', (event) => {
-        const { lat, lng } = (event.target as L.Marker).getLatLng()
-        store.setConstraintPoint(constraint.id, which, { lat, lon: lng })
-      })
   }
 
   function drawRadius(constraint: Constraint, layers: L.Layer[]) {
@@ -235,6 +251,37 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     }).bindTooltip(poi.name, { direction: 'top', offset: [0, -size / 2 - 2] })
   }
 
+  /**
+   * Linie vom Fragepunkt zu dem Ort, der von dort der nächste ist.
+   *
+   * Die Entfernung steht nur dran, wenn es etwas zu vergleichen gibt: bei der eigenen
+   * Frage ist die Zahl ohne Gegenstück nur Rauschen auf der Karte.
+   */
+  function originLine(constraint: Constraint, to: { lat: number; lon: number }) {
+    const line = L.polyline(
+      [
+        [constraint.origin.lat, constraint.origin.lon],
+        [to.lat, to.lon],
+      ],
+      {
+        color: colorOf(constraint),
+        weight: 2,
+        opacity: 0.8,
+        dashArray: '4,4',
+        interactive: false,
+      },
+    )
+
+    if (constraint.compareToUser) {
+      line.bindTooltip(formatDistance(distanceMeters(constraint.origin, to)), {
+        permanent: true,
+        direction: 'center',
+        className: 'distance-label',
+      })
+    }
+    return line
+  }
+
   /** Tentacles: Kreis um den Fragepunkt und die Orte, die darin liegen. */
   function drawPoiWithin(constraint: Constraint, layers: L.Layer[]) {
     const radius = constraint.radiusMeters
@@ -279,15 +326,7 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     }
     layers.push(poiMarker(constraint, closest.item, true))
 
-    layers.push(
-      L.polyline(
-        [
-          [constraint.origin.lat, constraint.origin.lon],
-          [closest.item.lat, closest.item.lon],
-        ],
-        { color: constraint.color, weight: 2, opacity: 0.8, dashArray: '4,4', interactive: false },
-      ),
-    )
+    layers.push(originLine(constraint, closest.item))
     layers.push(handleFor(constraint, 'origin', [constraint.origin.lat, constraint.origin.lon]))
   }
 
@@ -321,7 +360,77 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
     }
 
     layers.push(poiMarker(constraint, closest.item, true))
+    layers.push(originLine(constraint, closest.item))
     layers.push(handleFor(constraint, 'origin', [constraint.origin.lat, constraint.origin.lon]))
+  }
+
+  /**
+   * Vergleichslinien zur eigenen Position, wenn die Frage von jemand anderem kam.
+   *
+   * Eine Regel für alle Kartentypen: von dort, wo ich stehe, eine gestrichelte Linie zu
+   * jedem Punkt, der die Antwort entscheidet, beschriftet mit der Entfernung. Damit ist
+   * „bist du im Umkreis von 2 km?" oder „ist dein nächstes Museum meins?" abzulesen,
+   * ohne dass die App die Antwort behauptet — geantwortet wird weiterhin im Chat.
+   */
+  function drawComparison(constraint: Constraint, layers: L.Layer[]) {
+    const position = game.userPosition
+    if (!position) return
+    const me: LatLon = { lat: position.lat, lon: position.lon }
+
+    if (constraint.viz === 'radius') {
+      layers.push(compareLine(me, constraint.origin))
+      return
+    }
+
+    // Thermometer: der Abstand zu beiden Enden der Fahrt ist die Antwort.
+    if (constraint.viz === 'halfplane') {
+      layers.push(compareLine(me, constraint.origin))
+      if (constraint.target) layers.push(compareLine(me, constraint.target))
+      return
+    }
+
+    const pois = poisFor(constraint)
+    const radius = constraint.radiusMeters
+
+    // Tentacles fragt nach dem nächsten Ort *im Kreis des Fragenden* — die Orte
+    // ausserhalb zählen für die Antwort nicht.
+    const candidates =
+      constraint.viz === 'poi-within' && radius
+        ? pois.filter((poi) => distanceMeters(constraint.origin, poi) <= radius)
+        : pois
+
+    const mine = nearest(me, candidates)
+    if (!mine) return
+
+    // Bei Matching und Measuring ist der nächste Ort des Fragenden schon hervorgehoben;
+    // ist es derselbe, reicht ein Marker — die zwei Linien darauf sind die Aussage.
+    // Meiner kann ausserhalb der gezeigten MAX_POI_MARKERS liegen, deshalb explizit.
+    const alreadyShown =
+      constraint.viz === 'poi-within' ? null : (nearest(constraint.origin, pois)?.item ?? null)
+    if (mine.item !== alreadyShown) layers.push(poiMarker(constraint, mine.item, true))
+
+    layers.push(compareLine(me, mine.item))
+  }
+
+  /** Gestrichelte Linie von der eigenen Position, mit der Entfernung als Etikett. */
+  function compareLine(from: LatLon, to: { lat: number; lon: number }) {
+    return L.polyline(
+      [
+        [from.lat, from.lon],
+        [to.lat, to.lon],
+      ],
+      {
+        color: cssColor('--accent', '#2563eb'),
+        weight: 2,
+        opacity: 0.95,
+        dashArray: '6,6',
+        interactive: false,
+      },
+    ).bindTooltip(formatDistance(distanceMeters(from, to)), {
+      permanent: true,
+      direction: 'center',
+      className: 'distance-label',
+    })
   }
 
   function draw() {
@@ -338,13 +447,43 @@ export function useConstraintLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canv
       else if (constraint.viz === 'poi-within') drawPoiWithin(constraint, layers)
       else if (constraint.viz === 'poi-nearest') drawPoiNearest(constraint, layers)
       else if (constraint.viz === 'poi-isodistance') drawPoiIsodistance(constraint, layers)
+
+      if (constraint.compareToUser) drawComparison(constraint, layers)
     }
 
     if (layers.length) group = L.layerGroup(layers).addTo(map.value)
+
+    const position = game.userPosition
+    lastDrawnPosition = position ? { lat: position.lat, lon: position.lon } : null
   }
 
   watch(() => store.constraints, draw, { deep: true })
   watch(() => store.preview, draw, { deep: true })
+
+  /**
+   * Die Vergleichslinien einer erhaltenen Frage folgen dem GPS — aber nicht jedem Zucken.
+   *
+   * `watchPosition` liefert im Sekundentakt, und ein Neuzeichnen hängt bei Measuring an
+   * über tausend Kreisen. Unter 20 m ändert sich an der Aussage ohnehin nichts; das ist
+   * auch weniger, als die Entfernungsangabe auflöst.
+   */
+  const REDRAW_THRESHOLD_METERS = 20
+  let lastDrawnPosition: LatLon | null = null
+
+  watch(
+    () => game.userPosition,
+    (position) => {
+      if (!store.preview?.compareToUser || !position) return
+      if (
+        lastDrawnPosition &&
+        distanceMeters(lastDrawnPosition, position) < REDRAW_THRESHOLD_METERS
+      ) {
+        return
+      }
+      lastDrawnPosition = { lat: position.lat, lon: position.lon }
+      draw()
+    },
+  )
 
   function bind() {
     if (!map.value) return
