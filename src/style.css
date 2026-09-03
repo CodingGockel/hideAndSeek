@@ -161,7 +161,7 @@ button {
     0 2px 8px rgb(0 0 0 / 0.5);
 }
 
-/* Orte der Fragekarten: Piktogramm der Kategorie in der Farbe ihrer Einschränkung. */
+/* Orte der Fragekarten: Piktogramm der Kategorie, neutral eingefärbt. */
 .poi-pin {
   display: grid;
   place-items: center;
@@ -180,7 +180,8 @@ button {
   fill: currentColor;
 }
 
-/* Der nächstgelegene Ort trägt die Antwort — er darf auffallen. */
+/* Der nächstgelegene Ort trägt die Antwort — er darf auffallen. Er ist der einzige
+   Ort in der Akzentfarbe (--c), alle anderen bleiben neutral. */
 .poi-pin.is-nearest {
   border-width: 3px;
   box-shadow:
@@ -213,20 +214,16 @@ button {
   box-shadow: 0 0 0 2px #fff;
 }
 
-/* Verschiebbare Griffe für Frage- und Zielpunkt einer Einschränkung. */
-.constraint-handle {
-  display: grid;
-  place-items: center;
+/* Der Punkt, von dem aus gefragt wird. Fest, deshalb ein schlichter Punkt statt eines
+   Griffs — er liegt meist genau auf der eigenen Position und soll sie nicht verdecken. */
+.preview-anchor {
+  display: block;
   width: 100%;
   height: 100%;
   border-radius: 50%;
   border: 2px solid #fff;
   background: var(--c);
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: grab;
 }
 
 /* Die Attribution muss aus Lizenzgründen erreichbar bleiben, kostet ausgeklappt

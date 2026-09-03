@@ -237,8 +237,9 @@ export const useGameStore = defineStore('game', () => {
     const next = new Set(activeModes.value)
     if (next.has(mode)) next.delete(mode)
     else next.add(mode)
-    // Alles abzuwählen zeigt eine leere Karte und sieht wie ein Fehler aus.
-    if (next.size) activeModes.value = next
+    // Auch das leere Set ist erlaubt: eine Karte ganz ohne Halte ist beim Planen einer
+    // Fragekarte genau das, was man sehen will.
+    activeModes.value = next
   }
 
   return {

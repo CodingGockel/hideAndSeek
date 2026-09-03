@@ -18,28 +18,6 @@ const LINK_VERSION = '1'
  */
 const COORD_DIGITS = 5
 
-/** Antwortknöpfe. Zweimal gebraucht: beim Stellen und beim Beantworten der Frage. */
-export const ANSWER_LABELS: Record<string, string> = {
-  yes: 'Ja',
-  no: 'Nein',
-  closer: 'Näher',
-  further: 'Weiter',
-  hotter: 'Wärmer',
-  colder: 'Kälter',
-  within: 'Orte im Umkreis zeigen',
-}
-
-/**
- * Die Antworten, zwischen denen die Karte unterscheiden kann.
- *
- * Tentacles beantwortet man mit einem Ortsnamen, nicht mit ja/nein — dort gibt es
- * nichts zu wählen, die Karte zeigt einfach die Orte im Umkreis.
- */
-export function answersFor(category: QuestionCategory, question: Question): string[] {
-  if (question.viz === 'poi-within') return ['within']
-  return category.answers.slice(0, 2)
-}
-
 /** "2 km" bzw. "500 m" — die Schreibweise der Radar-Karten. */
 function radiusLabel(meters: number | null | undefined): string {
   if (!meters) return '?'

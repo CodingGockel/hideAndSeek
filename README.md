@@ -53,25 +53,24 @@ Der Reiter „Fragen" listet alle Karten aus `jetlag_questions_medium.json`, nac
 gruppiert, mit Zeitlimit und Karten-Belohnung. Ein Häkchen markiert eine Frage als genutzt
 (bleibt in `localStorage`, kein Rundenkonzept).
 
-„Karte" zeigt die Geometrie **sofort als Vorschau** — grau gestrichelt, noch ohne
-Aussage. Bei Radar sieht man damit erst einmal, wie gross der gewählte Radius überhaupt
-ist; die Karte zoomt passend und das Sheet klappt halb ein, sodass die Antwortknöpfe
-erreichbar bleiben. Beim frei gewählten Radius wächst der Kreis beim Tippen mit. Erst
-die Antwort macht daraus eine farbige, bleibende Einschränkung; ein zweites Antippen von
-„Karte" verwirft die Vorschau. Da Stationen bewusst **nicht**
-automatisch ausgeschlossen werden, liegen beliebig viele Einschränkungen gleichzeitig
-übereinander — der Bereich, den alle offen lassen, ist der gesuchte. Jede Einschränkung
-lässt sich einzeln ausblenden oder löschen; die Punkte A und B sind auf der Karte
-verschiebbar.
+Das **Karten-Icon** legt die Geometrie der Frage auf die Karte: worüber die Frage redet,
+nicht was die Antwort ist. Die Karte zoomt passend, das Sheet klappt halb ein. Ein
+zweites Antippen nimmt sie wieder weg, ein Antippen an einer anderen Karte ersetzt sie —
+es liegt immer höchstens eine da. Beim frei wählbaren Radar-Radius wächst der Kreis beim
+Tippen mit.
+
+Beantwortet wird im Chat, nicht in der App: die Antwort steht ohnehin dort, und ein
+zweiter Zustand neben dem Häkchen wäre unterwegs nur Buchhaltung. Die App zeigt deshalb
+zwei Farben — alles Neutrale grau, und in Blau genau das, was die Frage entscheidet: den
+nächstgelegenen Ort und eine gestrichelte Linie mit der Entfernung dorthin.
 
 | Kategorie | Darstellung |
 |---|---|
-| Radar | Kreis um A. „Ja" wird ausgefüllt, „Nein" abgedunkelt und gestrichelt |
-| Thermometer | A setzen, dann auf die Karte tippen für B. Die Mittelsenkrechte trennt, die kalte Seite wird abgedunkelt |
-| Tentacles | Kreis plus alle Orte der Kategorie darin, je mit Piktogramm (Museum, Zoo, Kino …) |
-| Matching | die Orte in der Nähe, der eigene nächstgelegene hervorgehoben |
-| Measuring | gleich grosse Kreise um **alle** Orte der Kategorie, mit dem eigenen Abstand zum nächsten als Radius. Die Vereinigung ist genau der Bereich, von dem aus ein Ort näher liegt als von A |
-| Photos | nicht zeichenbar, nur abhakbar |
+| Radar | gestrichelter Kreis um den Fragepunkt |
+| Tentacles | Kreis plus alle Orte der Kategorie darin, je mit Piktogramm (Museum, Zoo, Kino …), der nächstgelegene hervorgehoben |
+| Matching | die Orte in der Nähe (bis zu 60), der nächstgelegene hervorgehoben |
+| Measuring | dasselbe Bild wie Matching: die Frage ist eine andere, aber zu beantworten ist sie nur über die Orte und den eigenen nächsten |
+| Thermometer · Photos | nicht zeichenbar, nur abhakbar |
 
 Fragen, die mit den vorhandenen Daten kaum etwas aussagen, sind als **schwach** markiert —
 etwa „gleicher nächster Flughafen?" (es gibt nur Schiphol, die Antwort ist immer ja) oder
@@ -110,11 +109,11 @@ Bei Radar ist das der Fragende selbst, bei Matching und Measuring der jeweils n�
 Ort auf beiden Seiten, bei Tentacles der nächste Ort im Kreis — dessen Name steht
 zusätzlich im Klartext da, denn er *ist* die Antwort.
 
-Geantwortet wird im Chat. Die Ja/Nein-Knöpfe in der Karte legen die Einschränkung nur
-lokal an — praktisch für ein zweites Sucher-Team, das denselben Link bekommen hat.
+Geantwortet wird im Chat; die App zeigt nur, was zur Antwort nötig ist.
 
-Das Thermometer verschickt nur den aktuellen Punkt; woher der Sucher losgefahren ist,
-steht in der Nachricht davor.
+Thermometer-Karten lassen sich verschicken, aber nicht zeichnen: die Mittelsenkrechte
+bräuchte Start- *und* Zielpunkt, verschickt wird nur der aktuelle. Woher der Sucher
+losgefahren ist, steht in der Nachricht davor.
 
 ## Stationsdaten pflegen
 
@@ -177,7 +176,7 @@ public/data/            stations.json · area.geojson · config.json
 scripts/                Datenerzeugung; scripts/lib/overpass.mjs teilen sich die Skripte
 src/composables/        Leaflet-Instanz, Stationsebenen, Fragen-Geometrie, Ortung
 src/stores/game.ts      Stationen, Karte, Standort
-src/stores/questions.ts Fragekarten, Häkchen, Einschränkungen
+src/stores/questions.ts Fragekarten, Häkchen, Kartenvorschau
 src/lib/share.ts        Nachrichtentext, Link-Schema, deutsche Fragesätze
 ```
 

@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuestionStore } from '../stores/questions'
-import { ANSWER_LABELS, answersFor } from '../lib/share'
 import type { Question } from '../types/game'
 
 const emit = defineEmits<{
-  show: [question: Question, answer: string, radiusMeters: number | null]
   preview: [question: Question | null, radiusMeters: number | null]
   share: [question: Question, radiusMeters: number | null]
 }>()
@@ -15,7 +13,13 @@ const store = useQuestionStore()
 // Alle Kategorien starten eingeklappt — 69 Fragen am Stück sind auf dem Handy
 // nicht zu überblicken.
 const collapsed = ref<Set<string>>(new Set(['matching', 'measuring', 'photos', 'tentacles']))
-const answering = ref<string | null>(null)
+
+/**
+ * Die eine Frage, deren Geometrie gerade auf der Karte liegt — aus dem Store gelesen,
+ * nicht hier gehalten: die Vorschau verschwindet auch von aussen, etwa beim Wechsel in
+ * den Haltestellen-Bereich. Ein eigener Merker bliebe dann fälschlich hell.
+ */
+const openId = computed(() => store.preview?.questionId ?? null)
 const customRadius = ref(3000)
 
 function toggleCategory(id: string) {
@@ -25,28 +29,32 @@ function toggleCategory(id: string) {
   collapsed.value = next
 }
 
-function onShow(question: Question, answer: string) {
-  emit('show', question, answer, question.radiusMeters ?? customRadius.value)
-  answering.value = null
-}
-
 /**
- * Antippen von „Karte" zeigt die Geometrie sofort, noch vor der Antwort — bei
- * Radar sieht man so erst einmal, wie gross der Radius überhaupt ist.
+ * Das Karten-Icon zeigt die Geometrie der Frage: den Umkreis, die Orte, den
+ * nächstgelegenen davon. Ein zweiter Druck nimmt sie wieder weg. Immer nur eine —
+ * beantwortet wird im Chat, hier bleibt nur das Häkchen.
  */
-function onToggleAnswering(question: Question) {
-  if (answering.value === question.id) {
-    answering.value = null
+function onToggleMap(question: Question) {
+  if (openId.value === question.id) {
     emit('preview', null, null)
     return
   }
-  answering.value = question.id
-  emit('preview', question, question.radiusMeters ?? customRadius.value)
+  emit('preview', question, radiusFor(question))
 }
 
-/** Beim frei gewählten Radius wächst die Vorschau beim Tippen mit. */
+/**
+ * Der frei gewählte Radius gilt nur für die eine Radar-Karte, die keinen mitbringt.
+ * Sonst hinge er auch an einer Matching-Karte, die gar keinen Umkreis kennt — und die
+ * Karte zöge den Ausschnitt auf drei Kilometer statt auf den nächstgelegenen Ort.
+ */
+function radiusFor(question: Question): number | null {
+  if (question.radiusMeters != null) return question.radiusMeters
+  return question.viz === 'radius' ? customRadius.value : null
+}
+
+/** Beim frei gewählten Radius wächst der Kreis beim Tippen mit. */
 function onCustomRadiusChange(question: Question) {
-  if (answering.value !== question.id) return
+  if (openId.value !== question.id) return
   emit('preview', question, customRadius.value)
 }
 
@@ -55,10 +63,9 @@ function onCustomRadiusChange(question: Question) {
  * die Photos-Karten leben davon, dass der andere sie überhaupt erst zu sehen bekommt.
  */
 function onShare(question: Question) {
-  // Der frei gewählte Radius gilt nur für die eine Radar-Karte, die keinen mitbringt.
-  // Sonst stünde er auch an einer Photos-Karte im Link und hiesse dort nichts.
-  const custom = question.viz === 'radius' && question.radiusMeters == null
-  emit('share', question, question.radiusMeters ?? (custom ? customRadius.value : null))
+  // Ohne die Einschränkung stünde der frei gewählte Radius auch an einer Photos-Karte
+  // im Link und hiesse dort nichts.
+  emit('share', question, radiusFor(question))
 }
 </script>
 
@@ -127,15 +134,30 @@ function onShare(question: Question) {
               v-if="question.viz !== 'none'"
               type="button"
               class="show"
-              :class="{ open: answering === question.id }"
-              @click="onToggleAnswering(question)"
+              :class="{ on: openId === question.id }"
+              :aria-pressed="openId === question.id"
+              :aria-label="`${question.label} auf der Karte zeigen`"
+              title="Auf der Karte zeigen"
+              @click="onToggleMap(question)"
             >
-              Karte
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M20.5 3l-.16.03L15 5.1 9 3 3.38 4.9c-.23.07-.38.26-.38.5V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.62-1.9c.23-.07.38-.26.38-.5V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"
+                />
+              </svg>
             </button>
             <span v-else class="no-viz" title="Nicht auf der Karte darstellbar">–</span>
           </div>
 
-          <div v-if="answering === question.id" class="answers">
+          <!-- Nur noch für die eine Radar-Karte ohne festen Radius und für die
+               Begründung, warum eine Frage als schwach gilt. -->
+          <div
+            v-if="
+              openId === question.id &&
+              (question.weak || (question.viz === 'radius' && question.radiusMeters == null))
+            "
+            class="details"
+          >
             <label v-if="question.radiusMeters == null && question.viz === 'radius'" class="custom">
               Radius
               <input
@@ -148,17 +170,6 @@ function onShare(question: Question) {
               m
             </label>
             <p v-if="question.weak" class="weak-note">{{ question.weak }}</p>
-            <div class="answer-buttons">
-              <button
-                v-for="answer in answersFor(category, question)"
-                :key="answer"
-                type="button"
-                class="answer"
-                @click="onShow(question, answer)"
-              >
-                {{ ANSWER_LABELS[answer] ?? answer }}
-              </button>
-            </div>
           </div>
         </li>
       </ul>
@@ -303,28 +314,11 @@ function onShare(question: Question) {
   font-weight: 600;
 }
 
+/* Zwei gleich grosse Icon-Knöpfe statt Wörtern: in einer 44-px-Zeile ist neben dem
+   Label kein Platz für zwei Beschriftungen, und nebeneinander lesen sich Papierflieger
+   und Faltkarte schneller als „Karte". */
+.send,
 .show {
-  flex: none;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.show.open {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-/* Papierflieger statt Wort: neben Label und „Karte" ist in einer 44-px-Zeile kein
-   Platz mehr für einen dritten Text. */
-.send {
   flex: none;
   display: grid;
   place-items: center;
@@ -338,10 +332,22 @@ function onShare(question: Question) {
   cursor: pointer;
 }
 
-.send svg {
+.send svg,
+.show svg {
   width: 15px;
   height: 15px;
   fill: currentColor;
+}
+
+.show {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Liegt die Geometrie dieser Frage gerade auf der Karte, ist der Knopf gefüllt. */
+.show.on {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .no-viz {
@@ -351,7 +357,7 @@ function onShare(question: Question) {
   color: var(--border-strong);
 }
 
-.answers {
+.details {
   margin: 0 0 10px 56px;
   padding: 10px;
   border-radius: 10px;
@@ -378,27 +384,9 @@ function onShare(question: Question) {
 }
 
 .weak-note {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 12px;
   color: var(--text-muted);
-}
-
-.answer-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.answer {
-  flex: 1;
-  min-height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .empty {

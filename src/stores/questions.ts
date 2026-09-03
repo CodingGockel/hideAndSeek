@@ -1,29 +1,24 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type {
-  Constraint,
   LatLon,
+  MapPreview,
   Poi,
   PoiFile,
   Question,
   QuestionCategory,
   QuestionsFile,
-  VizKind,
 } from '../types/game'
 
 const BASE = import.meta.env.BASE_URL
 const USED_KEY = 'hs.usedQuestions.v1'
-const CONSTRAINTS_KEY = 'hs.constraints.v1'
 
 /**
- * Farben für die Einschränkungen. Da mehrere gleichzeitig auf der Karte liegen,
- * müssen sie sich sowohl voneinander als auch von den Stationsfarben (Blau, Orange)
- * unterscheiden.
+ * Bis V4 lagen hier die beantworteten Fragen als dauerhafte „Einschränkungen". Der
+ * Schlüssel wird beim Start einmal geräumt, sonst bliebe der Altbestand für immer im
+ * Speicher liegen.
  */
-const PALETTE = ['#0d9488', '#9333ea', '#db2777', '#65a30d', '#0284c7', '#ea580c']
-
-/** Neutrale Farbe für die Vorschau — sie gehört noch keiner Einschränkung. */
-const PREVIEW_COLOR = '#64748b'
+const LEGACY_CONSTRAINTS_KEY = 'hs.constraints.v1'
 
 function loadJson<T>(file: string): Promise<T> {
   return fetch(`${BASE}data/${file}`).then((res) => {
@@ -58,15 +53,19 @@ export const useQuestionStore = defineStore('questions', () => {
   const error = ref<string | null>(null)
 
   const usedIds = ref<Set<string>>(new Set(readStored<string[]>(USED_KEY, [])))
-  const constraints = ref<Constraint[]>(readStored<Constraint[]>(CONSTRAINTS_KEY, []))
   const search = ref('')
 
+  try {
+    localStorage.removeItem(LEGACY_CONSTRAINTS_KEY)
+  } catch {
+    // Privater Modus oder blockierter Storage — dann liegt dort ohnehin nichts.
+  }
+
   /**
-   * Vorschau der Geometrie, solange noch keine Antwort gewählt ist. Sie liegt
-   * bewusst neben den echten Einschränkungen und wird nicht gespeichert — wer die
-   * Frage doch nicht stellt, soll nichts aufräumen müssen.
+   * Die Geometrie der Frage, über die gerade geredet wird. Höchstens eine, nie
+   * gespeichert: sie zeigt, worüber die Frage redet, und verschwindet wieder.
    */
-  const preview = ref<Constraint | null>(null)
+  const preview = ref<MapPreview | null>(null)
 
   /**
    * Eine Frage, die per Link hereingekommen ist. Die Geometrie dazu liegt als
@@ -83,7 +82,6 @@ export const useQuestionStore = defineStore('questions', () => {
   } | null>(null)
 
   watch(usedIds, () => writeStored(USED_KEY, [...usedIds.value]), { deep: true })
-  watch(constraints, () => writeStored(CONSTRAINTS_KEY, constraints.value), { deep: true })
 
   const allQuestions = computed(() => categories.value.flatMap((c) => c.questions))
 
@@ -125,7 +123,6 @@ export const useQuestionStore = defineStore('questions', () => {
 
   const usedCount = computed(() => usedIds.value.size)
   const drawableCount = computed(() => allQuestions.value.filter((q) => q.viz !== 'none').length)
-  const visibleConstraints = computed(() => constraints.value.filter((c) => c.visible))
 
   async function load() {
     loading.value = true
@@ -156,21 +153,13 @@ export const useQuestionStore = defineStore('questions', () => {
     usedIds.value = new Set()
   }
 
-  /** Nächstgelegene Farbe, die noch frei ist — sonst reihum. */
-  function nextColor(): string {
-    const taken = new Set(constraints.value.map((c) => c.color))
-    return PALETTE.find((color) => !taken.has(color)) ?? PALETTE[constraints.value.length % PALETTE.length]
-  }
-
-  /** Geometrie einer noch unbeantworteten Frage zeigen. */
+  /** Geometrie einer Frage zeigen. */
   function setPreview(
     question: Question,
     origin: LatLon,
     radiusMeters: number | null,
-  ): Constraint | null {
-    // Ohne Antwort zeichenbar ist alles ausser dem Thermometer, das erst einen
-    // zweiten Punkt braucht.
-    if (question.viz === 'none' || question.viz === 'halfplane') {
+  ): MapPreview | null {
+    if (question.viz === 'none') {
       preview.value = null
       return null
     }
@@ -184,11 +173,7 @@ export const useQuestionStore = defineStore('questions', () => {
       origin,
       radiusMeters: radiusMeters ?? question.radiusMeters ?? null,
       poiCategory: question.poiCategory,
-      answer: '',
-      visible: true,
-      color: PREVIEW_COLOR,
       createdAt: Date.now(),
-      preview: true,
     }
     return preview.value
   }
@@ -201,16 +186,16 @@ export const useQuestionStore = defineStore('questions', () => {
   /**
    * Eine per Link erhaltene Frage anzeigen.
    *
-   * Anders als `setPreview` zeichnet sie auch das Thermometer: dessen zweiter Punkt
-   * fehlt zwar, aber der Standort des Fragenden ist für sich schon die halbe Aussage.
-   * `compareToUser` schaltet die Vergleichslinien zur eigenen Position frei.
+   * Wie `setPreview`, nur mit `compareToUser`: das schaltet die gestrichelten
+   * Vergleichslinien von der eigenen Position zu den Punkten frei, die die Antwort
+   * entscheiden.
    */
   function setIncoming(
     question: Question,
     origin: LatLon,
     radiusMeters: number | null,
     senderName: string,
-  ): Constraint | null {
+  ): MapPreview | null {
     incoming.value = { questionId: question.id, senderName, origin, radiusMeters }
 
     if (question.viz === 'none') {
@@ -227,70 +212,11 @@ export const useQuestionStore = defineStore('questions', () => {
       origin,
       radiusMeters: radiusMeters ?? question.radiusMeters ?? null,
       poiCategory: question.poiCategory,
-      answer: '',
-      visible: true,
-      color: PREVIEW_COLOR,
       createdAt: Date.now(),
-      preview: true,
       compareToUser: true,
       senderName,
     }
     return preview.value
-  }
-
-  function addConstraint(
-    question: Question,
-    origin: LatLon,
-    answer: string,
-    options: { target?: LatLon; radiusMeters?: number | null } = {},
-  ): Constraint {
-    const constraint: Constraint = {
-      id: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-      questionId: question.id,
-      categoryId: categoryOfQuestion.value.get(question.id)?.id ?? '',
-      label: question.label,
-      viz: question.viz as VizKind,
-      origin,
-      target: options.target,
-      radiusMeters: options.radiusMeters ?? question.radiusMeters ?? null,
-      poiCategory: question.poiCategory,
-      answer,
-      visible: true,
-      color: nextColor(),
-      createdAt: Date.now(),
-    }
-    constraints.value = [...constraints.value, constraint]
-    preview.value = null
-    return constraint
-  }
-
-  /**
-   * Die erste Thermometer-Einschränkung, der noch der zweite Punkt fehlt.
-   * Solange es sie gibt, wartet die Karte auf einen Tap.
-   */
-  const awaitingTarget = computed(
-    () => constraints.value.find((c) => c.viz === 'halfplane' && !c.target) ?? null,
-  )
-
-  /** Bezugspunkt oder Zielpunkt einer Einschränkung verschieben. */
-  function setConstraintPoint(id: string, which: 'origin' | 'target', point: LatLon) {
-    constraints.value = constraints.value.map((c) =>
-      c.id === id ? { ...c, [which]: point } : c,
-    )
-  }
-
-  function removeConstraint(id: string) {
-    constraints.value = constraints.value.filter((c) => c.id !== id)
-  }
-
-  function toggleConstraintVisible(id: string) {
-    constraints.value = constraints.value.map((c) =>
-      c.id === id ? { ...c, visible: !c.visible } : c,
-    )
-  }
-
-  function clearConstraints() {
-    constraints.value = []
   }
 
   return {
@@ -300,7 +226,6 @@ export const useQuestionStore = defineStore('questions', () => {
     loading,
     error,
     usedIds,
-    constraints,
     search,
     preview,
     incoming,
@@ -311,18 +236,11 @@ export const useQuestionStore = defineStore('questions', () => {
     poisByCategory,
     usedCount,
     drawableCount,
-    visibleConstraints,
-    awaitingTarget,
     setPreview,
     setIncoming,
     clearPreview,
-    setConstraintPoint,
     load,
     toggleUsed,
     clearUsed,
-    addConstraint,
-    removeConstraint,
-    toggleConstraintVisible,
-    clearConstraints,
   }
 })

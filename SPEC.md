@@ -49,37 +49,50 @@ Tramhalte ausgedünnt wurden, nicht der Spielradius.)
 ### V2 — Fragekarten (umgesetzt)
 
 Alle 69 Karten aus `jetlag_questions_medium.json` stehen als durchsuchbare Liste zum
-Abhaken bereit. 38 davon lassen sich auf der Karte zeichnen.
+Abhaken bereit. 35 davon lassen sich auf der Karte zeichnen.
 
-**Entwurfsentscheidung:** Halte werden *nicht* automatisch ausgeschlossen — die
-Geometrie wird gezeichnet, die Schlussfolgerung zieht der Spieler. Daraus folgt, dass
-die **Überlagerung** die Arbeit tun muss: ein einzelner Kreis hilft wenig, drei Kreise
-und eine Halbebene übereinander zeigen den verbleibenden Bereich. Zentrales Objekt ist
-deshalb nicht „die aktive Frage", sondern eine Liste von Einschränkungen, die
-gleichzeitig auf der Karte liegen, jede in eigener Farbe, einzeln ausblendbar.
+**Entwurfsentscheidung:** Die App nimmt keine Antworten entgegen. Sie zeigt, *worüber*
+eine Frage redet — den Umkreis, die Orte der Kategorie, den nächstgelegenen davon —, und
+die Schlussfolgerung zieht der Spieler. Antworten laufen ohnehin über den Chat; ein
+zweiter Zustand neben dem Häkchen wäre unterwegs nur Buchhaltung, die niemand pflegt.
+
+Daraus folgt: Es liegt immer **höchstens eine** Geometrie auf der Karte, und sie ist
+nicht dauerhaft. Der erste Entwurf sammelte stattdessen beantwortete Fragen als farbige
+Einschränkungen, die sich überlagern sollten — der Bereich, den alle offen lassen, wäre
+der gesuchte gewesen. Diese Überlagerung steht und fällt damit, dass jede Antwort
+eingetragen wird; ohne Ja/Nein gibt es sie nicht mehr. Übrig geblieben ist die Vorschau,
+die es schon vorher gab.
+
+Es gibt deshalb nur zwei Farben: alles Neutrale in `--preview`, und in `--accent` genau
+das, was die Frage entscheidet — der nächstgelegene Ort und eine gestrichelte Linie mit
+der Entfernung dorthin.
 
 | Frage-Typ | Zeichenbar | Geometrie |
 |---|---|---|
-| **Radar** (8) | alle | Kreis um A; „ja" gefüllt, „nein" abgedunkelt und gestrichelt |
-| **Thermometer** (3) | alle | A gesetzt, B per Tap; Mittelsenkrechte, kalte Seite abgedunkelt |
-| **Tentacles** (4) | alle | Kreis plus die Orte darin |
-| **Matching** (20) | 11 | Orte in der Nähe, der nächstgelegene hervorgehoben |
-| **Measuring** (20) | 12 | Isodistanz (s. u.) |
+| **Radar** (8) | alle | gestrichelter Kreis um den Fragepunkt |
+| **Tentacles** (4) | alle | Kreis, die Orte darin, der nächstgelegene hervorgehoben |
+| **Matching** (20) | 11 | die Orte in der Nähe (bis zu 60), der nächstgelegene hervorgehoben |
+| **Measuring** (20) | 12 | dasselbe Bild wie Matching |
+| **Thermometer** (3) | 0 | braucht Start- und Zielpunkt, s. u. |
 | **Photos** (14) | 0 | rein soziale Mechanik |
 
-Die **Isodistanz** ist der eleganteste Fall: Die Menge aller Punkte, die näher an
-*irgendeinem* Museum liegen als der Fragende, ist exakt die Vereinigung gleich grosser
-Kreise um alle Museen — mit dem eigenen Abstand zum nächsten als Radius. Exakt zeichenbar,
-ganz ohne Voronoi.
+**Matching und Measuring zeigen dasselbe Bild.** Die Fragen sind verschieden — Identität
+des nächsten Orts gegen Abstand zu ihm —, beantworten lässt sich aber beides nur, indem
+man die Orte sieht und weiss, welcher der eigene nächste ist. Measuring zeichnete
+zunächst die Isodistanz: die Menge aller Punkte, die näher an *irgendeinem* Museum liegen
+als der Fragende, ist exakt die Vereinigung gleich grosser Kreise um alle Museen. Exakt,
+elegant, ganz ohne Voronoi — und beim Spielen unbrauchbar, weil sie eine Antwort einfärbt,
+die es nicht mehr gibt, und ausgerechnet die Orte weglässt, um die es geht.
 
-„Karte" zeichnet die Geometrie sofort als neutrale Vorschau, bevor eine Antwort gewählt
-ist — sonst müsste man sich für ja oder nein entscheiden, ohne zu sehen, worüber man
-entscheidet. Die Vorschau wird nicht gespeichert und verschwindet beim Verlassen des
-Fragen-Bereichs.
+**Das Thermometer ist entfallen.** Es braucht einen Start- *und* einen Zielpunkt und lebte
+von „wärmer/kälter"; ohne Antworten bleibt eine Mittelsenkrechte ohne Aussage. Die drei
+Karten sind wie die Photos-Karten nur noch abhakbar und verschickbar — die gefahrene
+Strecke steht im Fragesatz.
 
-Der Bezugspunkt einer Einschränkung wird beim Anlegen **eingefroren**. Mit der
-Live-Position würde der Kreis mitwandern und seine Aussage verlieren. A und B sind auf
-der Karte verschiebbar.
+Der Bezugspunkt einer Vorschau wird beim Anlegen **eingefroren**: der eigene Standort,
+sonst die Kartenmitte. Mit der Live-Position würde der Kreis mitwandern und seine Aussage
+verlieren. Verschiebbar ist er nicht — die Vorschau wird nicht gespeichert, ein
+verschobener Punkt hielte nur bis zum nächsten Neuzeichnen.
 
 **Abweichung vom Original:** Radar- und Thermometer-Werte sind metrisch und auf das
 Gebiet zugeschnitten (500 m bis 40 km statt bis 161 km). Bei 45 × 40 km Spielgebiet
@@ -107,9 +120,9 @@ Vier Zeilen mit je einem Zweck: wer fragt und was, wo er steht, derselbe Punkt f
 ohne die App, und der Link für alle mit ihr. Der Knopf sitzt an **jeder** Karte, auch an
 den nicht zeichenbaren — die Photos-Karten leben gerade davon, verschickt zu werden.
 
-**Nur der Hinweg.** Die Antwort kommt als normale Chat-Nachricht zurück und wird wie
-bisher über die Ja/Nein-Knöpfe eingetragen. Ein Antwort-Link wäre der nächste Schritt
-(`&a=<answer>` ist im Schema frei), spart aber nur einen Tastendruck.
+**Nur der Hinweg.** Die Antwort kommt als normale Chat-Nachricht zurück und bleibt dort.
+Ein Antwort-Link wäre der nächste Schritt (`&a=<answer>` ist im Schema frei), hätte in der
+App aber nichts, wohin er führte.
 
 **Link-Schema.** Alles steckt im Fragment, nicht im Query-String: so braucht der
 statische Host keine Umschreibregel, und die Koordinaten stehen in keinem Server-Log.
@@ -134,20 +147,17 @@ die Antwort entscheidet**, beschriftet mit der Entfernung.
 | Matching | dem eigenen nächsten Ort. Läuft die zweite Linie auf denselben Marker, heisst die Antwort „ja" |
 | Measuring | dem eigenen nächsten Ort; die beiden beschrifteten Linien nebeneinander sind „näher" oder „weiter" |
 | Tentacles | dem nächsten Ort **im Kreis des Fragenden** — dessen Name *ist* die Antwort, deshalb steht er auch im Klartext in der Karte |
-| Thermometer | dem Startpunkt (der Zielpunkt fehlt, s. u.) |
+| Thermometer | — die Karte zeichnet nichts mehr, s. §2 |
 
 Die App zeigt damit alles, was zur Antwort nötig ist, behauptet sie aber nicht — das
 bleibt beim Spieler, wie schon bei den Einschränkungen.
 
-**Grenzen.** Das Thermometer bräuchte Start- *und* Endpunkt; verschickt wird nur der
-aktuelle. Woher der Sucher losgefahren ist, steht ohnehin in der vorherigen Nachricht,
-und es betrifft 3 von 69 Karten. Eine feste WhatsApp-Gruppe lässt sich nicht adressieren
-— `wa.me` kennt nur einen Chat-Picker oder eine Telefonnummer, keine Gruppen-ID.
+**Grenzen.** Eine feste WhatsApp-Gruppe lässt sich nicht adressieren — `wa.me` kennt nur
+einen Chat-Picker oder eine Telefonnummer, keine Gruppen-ID.
 
 ### V3 — Flüche
 - Fluch-Katalog aus JSON, aktive Flüche mit Timer
 - Freies Radien-Zeichenwerkzeug auf der Karte
-- Voronoi-Zellen für Matching, um die zulässige Fläche exakt zu zeigen
 - Verwaltungsgrenzen und Küstenlinie als Polygone — schaltet die restlichen
   Matching-/Measuring-Karten frei
 
@@ -235,6 +245,7 @@ src/
     StationDetail.vue
     LayerControls.vue     Filter nach Verkehrsmittel
   composables/
+    usePreviewLayers.ts   Geometrie der gerade gezeigten Frage
     useLeafletMap.ts      Leaflet direkt kapseln
     useGeolocation.ts     watchPosition + Permission-Handling
     useGameData.ts        JSON laden, validieren, cachen
@@ -347,24 +358,29 @@ Alkmaar. Wer einen Halt ganz ausschliessen will, setzt `ticketValid: false` in
 
 ## 8. Status
 
-V1, V2 und V4 sind umgesetzt; V1/V2 im Browser gegengeprüft, V4 headless gegen den
-echten Datenstand (Link-Rundlauf über alle 69 Karten, Sende- und Empfangsweg im DOM).
+V1, V2 und V4 sind umgesetzt und headless gegen den echten Datenstand gegengeprüft:
+Kartenvorschau je Frage-Typ (Orte, hervorgehobener nächster, Linie samt Entfernung) sowie
+der Link-Rundlauf über Sende- und Empfangsweg im DOM.
 
 - 459 Halte (63 Bahn, 29 Metro, 52 Tram, 300 Bus, 15 Fähre), davon 16 nur gegen Aufpreis;
   alle liegen im Spielgebiet
 - 2006 Orte in 11 Kategorien
-- 69 Fragekarten, 38 davon auf der Karte zeichenbar, 3 automatisch als schwach erkannt
+- 69 Fragekarten, 35 davon auf der Karte zeichenbar, 3 automatisch als schwach erkannt
 
 ### Beim Bauen aufgefallen
 
 - Ein Welt-Ring bis ±90° Breite lässt sich in Web-Mercator nicht projizieren; das
   Spielgebiet-Overlay wurde dadurch gar nicht gezeichnet. Grenze ist ±85,05°.
+- Leaflet stapelt Marker nach Breitengrad, nicht nach Einfügereihenfolge. Der
+  hervorgehobene Ort verschwand dadurch mitten in der Innenstadt unter den anderen; es
+  braucht einen `zIndexOffset`.
 - `L.circle(...).getBounds()` funktioniert nur, wenn das Circle an einer Karte hängt —
   sonst kommen NaN-Bounds heraus. `L.latLng(...).toBounds(meter)` rechnet kartenunabhängig.
 - Leaflets `flyToBounds` hat die Karte im Test nicht bewegt, `fitBounds` schon.
 - `fitBounds` auf einen einzelnen Punkt ergibt ein leeres Rechteck und damit die höchste
   Zoomstufe — bei Matching und Measuring war danach von der Geometrie nichts mehr zu
-  sehen. Ohne Radius braucht es einen festen Ersatz-Umkreis.
+  sehen. Ohne Radius spannt dort der nächstgelegene Ort den Ausschnitt auf, mit einer
+  Untergrenze für den Fall, dass er zweihundert Meter weiter steht.
 - Bahn und Metro am selben Knoten heissen unterschiedlich („Amsterdam Centraal" vs.
   „Centraal Station") — in OSM wie in der kuratierten Liste. Halte müssen räumlich
   zusammengeführt werden, nicht über den Namen.
@@ -383,7 +399,10 @@ echten Datenstand (Link-Rundlauf über alle 69 Karten, Sende- und Empfangsweg im
 - Permanente Leaflet-Tooltips erscheinen auch an Linien mit `interactive: false` — genau
   das, was eine Streckenbeschriftung braucht, die nicht angeklickt werden soll.
 - Der frei wählbare Radar-Radius steckt in der Fragenliste und galt versehentlich auch
-  für Karten ohne Radius; im Link stand dann `r=3000` an einer Photos-Karte.
+  für Karten ohne Radius. Im Link stand dann `r=3000` an einer Photos-Karte, und beim
+  Einpassen zog die Karte den Ausschnitt auf die 3 km des Reglers statt auf den
+  nächstgelegenen Ort — beim Zeichnen fiel es nicht auf, weil Matching und Measuring
+  keinen Radius benutzen.
 - `watchPosition` liefert im Sekundentakt. Solange eine erhaltene Frage offen ist, hängt
-  daran ein Neuzeichnen — bei Measuring über tausend Kreise. Unter 20 m Bewegung wird
-  deshalb nicht neu gezeichnet; das ist feiner, als die Entfernungsangabe auflöst.
+  daran ein Neuzeichnen — bei Matching und Measuring bis zu 60 Marker. Unter 20 m Bewegung
+  wird deshalb nicht neu gezeichnet; das ist feiner, als die Entfernungsangabe auflöst.

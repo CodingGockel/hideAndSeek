@@ -1,0 +1,5 @@
+Measuring
+„Zoo" — bist du näher dran als ich oder weiter weg?
+Mein Standort: 52.33786, 4.88686
+https://www.google.com/maps?q=52.33786,4.88686
+In der App beantworten: http://localhost:5173/#v=1&q=measuring%3Azoo&o=52.33786%2C4.88686

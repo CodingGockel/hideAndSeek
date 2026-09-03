@@ -2,10 +2,10 @@
 import { computed } from 'vue'
 import { useGameStore } from '../stores/game'
 import { useQuestionStore } from '../stores/questions'
-import { ANSWER_LABELS, answersFor, formatLatLon, mapsUrl, promptFor } from '../lib/share'
+import { formatLatLon, mapsUrl, promptFor } from '../lib/share'
 import { distanceMeters, formatDistance, nearest } from '../lib/geo'
 
-const emit = defineEmits<{ locate: []; answered: [] }>()
+const emit = defineEmits<{ locate: [] }>()
 
 const game = useGameStore()
 const questions = useQuestionStore()
@@ -54,21 +54,6 @@ const nearestWithin = computed(() => {
   return closest ? { name: closest.item.name, distance: closest.distance } : null
 })
 
-const answers = computed(() =>
-  category.value && question.value && question.value.viz !== 'none'
-    ? answersFor(category.value, question.value)
-    : [],
-)
-
-function onAnswer(answer: string) {
-  const incoming = questions.incoming
-  if (!question.value || !incoming) return
-  questions.addConstraint(question.value, incoming.origin, answer, {
-    radiusMeters: incoming.radiusMeters,
-  })
-  questions.clearPreview()
-  emit('answered')
-}
 </script>
 
 <template>
@@ -98,19 +83,6 @@ function onAnswer(answer: string) {
       Dir am nächsten im Umkreis: <strong>{{ nearestWithin.name }}</strong>
       ({{ formatDistance(nearestWithin.distance) }})
     </p>
-
-    <!-- Antworten geht per Chat zurück. Die Knöpfe legen die Einschränkung nur lokal
-         an — nützlich für ein zweites Sucher-Team, das denselben Link bekommen hat. -->
-    <div v-if="answers.length" class="answers">
-      <button
-        v-for="answer in answers"
-        :key="answer"
-        type="button"
-        @click="onAnswer(answer)"
-      >
-        {{ ANSWER_LABELS[answer] ?? answer }}
-      </button>
-    </div>
   </section>
 </template>
 
@@ -193,25 +165,6 @@ function onAnswer(answer: string) {
   color: var(--accent);
   font: inherit;
   font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.answers {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.answers button {
-  flex: 1;
-  min-height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }

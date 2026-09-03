@@ -415,7 +415,7 @@
         {
           "id": "thermometer:1-km",
           "label": "nach 1 km Fahrt",
-          "viz": "halfplane",
+          "viz": "none",
           "poiCategory": null,
           "radiusMeters": 1000,
           "weak": null
@@ -423,7 +423,7 @@
         {
           "id": "thermometer:5-km",
           "label": "nach 5 km Fahrt",
-          "viz": "halfplane",
+          "viz": "none",
           "poiCategory": null,
           "radiusMeters": 5000,
           "weak": null
@@ -431,7 +431,7 @@
         {
           "id": "thermometer:15-km",
           "label": "nach 15 km Fahrt",
-          "viz": "halfplane",
+          "viz": "none",
           "poiCategory": null,
           "radiusMeters": 15000,
           "weak": null

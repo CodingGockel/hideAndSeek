@@ -79,21 +79,16 @@ export interface LatLon {
  * Wie eine Frage auf der Karte dargestellt wird.
  *
  * - `radius`          Kreis um den Standort (Radar)
- * - `halfplane`       Mittelsenkrechte zwischen zwei Punkten (Thermometer)
  * - `poi-within`      Kreis plus die Orte darin (Tentacles)
  * - `poi-nearest`     alle Orte der Kategorie, der nächstgelegene hervorgehoben (Matching)
- * - `poi-isodistance` gleich grosse Kreise um alle Orte der Kategorie (Measuring):
- *                     die Vereinigung ist genau der Bereich, der näher an einem Ort
- *                     liegt als der Fragende
- * - `none`            nicht zeichenbar, nur abhakbar (Photos, Grenzen, Höhen)
+ * - `poi-isodistance` dasselbe Bild wie `poi-nearest` (Measuring). Früher standen hier
+ *                     gleich grosse Kreise um alle Orte, deren Vereinigung die Antwort
+ *                     „näher" war — ohne Ja/Nein gibt es nichts mehr einzufärben, und
+ *                     zum Spielen zählen die Orte selbst. Der eigene Wert bleibt, weil
+ *                     die Frage eine andere ist: Abstand statt Identität.
+ * - `none`            nicht zeichenbar, nur abhakbar (Photos, Thermometer, Grenzen)
  */
-export type VizKind =
-  | 'radius'
-  | 'halfplane'
-  | 'poi-within'
-  | 'poi-nearest'
-  | 'poi-isodistance'
-  | 'none'
+export type VizKind = 'radius' | 'poi-within' | 'poi-nearest' | 'poi-isodistance' | 'none'
 
 export interface Question {
   id: string
@@ -139,29 +134,26 @@ export interface PoiFile {
 }
 
 /**
- * Eine gestellte und beantwortete Frage, als Geometrie auf der Karte.
+ * Eine Frage als Geometrie auf der Karte.
+ *
+ * Es liegt immer höchstens eine davon auf der Karte: sie zeigt, worüber die Frage
+ * redet, und verschwindet wieder. Beantwortet wird im Chat — in der App bleibt vom
+ * Spielstand nur das Häkchen „genutzt".
  *
  * `origin` wird beim Anlegen eingefroren: die Frage wurde von einem bestimmten Ort
  * aus gestellt. Mit der Live-Position würde der Kreis mitwandern und seine Aussage
  * verlieren.
  */
-export interface Constraint {
+export interface MapPreview {
   id: string
   questionId: string
   categoryId: string
   label: string
   viz: VizKind
   origin: LatLon
-  /** Zweiter Punkt beim Thermometer: wohin gefahren wurde. */
-  target?: LatLon
   radiusMeters?: number | null
   poiCategory?: string | null
-  answer: string
-  visible: boolean
-  color: string
   createdAt: number
-  /** Noch nicht bestätigt: wird neutral gezeichnet und nicht gespeichert. */
-  preview?: boolean
   /**
    * Die Frage kam von jemand anderem: zusätzlich zur Geometrie werden gestrichelte
    * Linien von der eigenen Position zu den Punkten gezogen, die die Antwort

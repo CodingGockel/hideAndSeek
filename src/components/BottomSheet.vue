@@ -132,6 +132,7 @@ const style = computed(() => ({
 
 .handle {
   display: block;
+  position: relative;
   width: 44px;
   height: 5px;
   margin: 0 auto 8px;
@@ -141,15 +142,17 @@ const style = computed(() => ({
   background: var(--border-strong);
 }
 
-/* Vergrössert die Trefferfläche des Griffs auf ein daumentaugliches Mass, ohne
-   den Strich selbst dicker zu machen. */
+/* Vergrössert die Trefferfläche des Griffs, ohne den Strich selbst dicker zu machen.
+   Die Fläche hängt am Griff selbst — wäre sie am Sheet verankert, spannte sie sich über
+   dessen ganze obere Kante und schluckte die Taps auf die Tabs in der Kopfzeile. Nach
+   unten reicht sie deshalb nur bis zur Kopfzeile, nach oben nur bis zur Sheet-Kante. */
 .handle::before {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 44px;
+  left: -28px;
+  right: -28px;
+  top: -6px;
+  bottom: -8px;
 }
 
 .head {

@@ -8,7 +8,6 @@ import BottomSheet from './components/BottomSheet.vue'
 import StationList from './components/StationList.vue'
 import StationDetail from './components/StationDetail.vue'
 import QuestionList from './components/QuestionList.vue'
-import ConstraintList from './components/ConstraintList.vue'
 import ShareQuestion from './components/ShareQuestion.vue'
 import IncomingQuestion from './components/IncomingQuestion.vue'
 import { parseAskHash } from './lib/share'
@@ -67,7 +66,7 @@ function applyIncomingLink() {
 
   tab.value = 'questions'
   sheetRef.value?.expand()
-  if (preview) mapRef.value?.focusConstraint(preview.id)
+  if (preview) mapRef.value?.focusPreview()
 
   // Ohne eigene Position gibt es weder Entfernung noch Vergleichslinien — und genau
   // dafür ist der Link da.
@@ -190,19 +189,10 @@ function onPreviewQuestion(question: Question | null, radiusMeters: number | nul
   const preview = questions.setPreview(question, origin, radiusMeters)
   if (!preview) return
 
-  // Halb aufklappen statt ganz: so ist die Geometrie oben zu sehen und die
-  // Antwortknöpfe bleiben unten erreichbar.
+  // Halb aufklappen statt ganz: so ist die Geometrie oben zu sehen und die Zeile mit dem
+  // Karten-Icon bleibt unten erreichbar.
   sheetRef.value?.expand()
-  mapRef.value?.focusConstraint(preview.id)
-}
-
-function onShowQuestion(question: Question, answer: string, radiusMeters: number | null) {
-  const origin = originForQuestion()
-  if (!origin) return
-  const constraint = questions.addConstraint(question, origin, answer, { radiusMeters })
-  // Beim Thermometer fehlt noch der Zielpunkt — die Karte muss dafür sichtbar sein.
-  if (constraint.viz === 'halfplane') sheetRef.value?.collapse()
-  else mapRef.value?.focusConstraint(constraint.id)
+  mapRef.value?.focusPreview()
 }
 
 function onShareQuestion(question: Question, radiusMeters: number | null) {
@@ -214,10 +204,6 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
   sheetRef.value?.collapse()
 }
 
-function onFocusConstraint(id: string) {
-  mapRef.value?.focusConstraint(id)
-  sheetRef.value?.collapse()
-}
 </script>
 
 <template>
@@ -252,13 +238,6 @@ function onFocusConstraint(id: string) {
       <p v-if="store.placingPosition" class="overlay hint">
         Tippe auf die Karte, wo du stehst
         <button type="button" @click="store.placingPosition = false">Abbrechen</button>
-      </p>
-
-      <p v-else-if="questions.awaitingTarget" class="overlay hint">
-        Tippe auf die Karte, wohin du gefahren bist
-        <button type="button" @click="questions.removeConstraint(questions.awaitingTarget.id)">
-          Abbrechen
-        </button>
       </p>
 
       <div class="fabs">
@@ -361,17 +340,8 @@ function onFocusConstraint(id: string) {
         </template>
 
         <template v-else>
-          <IncomingQuestion
-            v-if="questions.incoming"
-            @locate="geo.start()"
-            @answered="sheetRef?.collapse()"
-          />
-          <ConstraintList @focus="onFocusConstraint" />
-          <QuestionList
-            @show="onShowQuestion"
-            @preview="onPreviewQuestion"
-            @share="onShareQuestion"
-          />
+          <IncomingQuestion v-if="questions.incoming" @locate="geo.start()" />
+          <QuestionList @preview="onPreviewQuestion" @share="onShareQuestion" />
         </template>
       </BottomSheet>
     </main>

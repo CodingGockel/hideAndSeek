@@ -160,10 +160,13 @@ const categories = source.categories.map((category) => {
       },
     ]
   } else if (category.id === 'thermometer') {
+    // Nicht zeichenbar: die Mittelsenkrechte braucht Start- *und* Zielpunkt und lebte
+    // von „wärmer/kälter". Beides gibt es nicht mehr, seit die App keine Antworten
+    // mehr entgegennimmt. Die Fahrstrecke bleibt — sie steht im Fragesatz.
     questions = THERMOMETER_DISTANCES.map((radiusMeters) => ({
       id: makeId('thermometer', formatMeters(radiusMeters)),
       label: `nach ${formatMeters(radiusMeters)} Fahrt`,
-      viz: 'halfplane',
+      viz: 'none',
       poiCategory: null,
       radiusMeters,
       weak: null,

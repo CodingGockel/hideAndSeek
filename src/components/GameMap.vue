@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useGameStore } from '../stores/game'
-import { useQuestionStore } from '../stores/questions'
 import { useLeafletMap } from '../composables/useLeafletMap'
 import { useStationLayers } from '../composables/useStationLayers'
-import { useConstraintLayers } from '../composables/useConstraintLayers'
+import { usePreviewLayers } from '../composables/usePreviewLayers'
 
 const store = useGameStore()
-const questions = useQuestionStore()
 const container = ref<HTMLElement | null>(null)
 const { map, renderer, create, setBasemap } = useLeafletMap(container)
 const layers = useStationLayers(map, renderer)
-const constraints = useConstraintLayers(map, renderer)
+const preview = usePreviewLayers(map, renderer)
 
 let initialised = false
 
@@ -21,20 +19,11 @@ function init() {
   create(store.config)
   if (store.activeBasemap) setBasemap(store.activeBasemap, store.config)
   layers.bind()
-  constraints.bind()
+  preview.bind()
 
   map.value?.on('click', (event) => {
-    const point = { lat: event.latlng.lat, lon: event.latlng.lng }
-
-    // Standort setzen geht vor: das ist die zuletzt ausdrücklich angeforderte Aktion.
-    if (store.placingPosition) {
-      store.setManualPosition(point)
-      return
-    }
-
-    // Fehlt einer Thermometer-Frage noch der Zielpunkt, setzt ihn der nächste Tap.
-    const pending = questions.awaitingTarget
-    if (pending) questions.setConstraintPoint(pending.id, 'target', point)
+    if (!store.placingPosition) return
+    store.setManualPosition({ lat: event.latlng.lat, lon: event.latlng.lng })
   })
 }
 
@@ -57,7 +46,7 @@ function getCenter() {
 defineExpose({
   focusStation: layers.focusStation,
   centerOnUser: layers.centerOnUser,
-  focusConstraint: constraints.focusConstraint,
+  focusPreview: preview.focusPreview,
   getCenter,
 })
 </script>
