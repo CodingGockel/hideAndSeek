@@ -9,7 +9,6 @@ import StationList from './components/StationList.vue'
 import StationDetail from './components/StationDetail.vue'
 import QuestionList from './components/QuestionList.vue'
 import ConstraintList from './components/ConstraintList.vue'
-import { formatDistance } from './lib/geo'
 import type { Question, TransportMode } from './types/game'
 
 const store = useGameStore()
@@ -52,57 +51,55 @@ const modes = computed(() =>
   ),
 )
 
-/** Die Kernaussage der App: zählt der aktuelle Standort als Versteck? */
-const status = computed(() => {
-  // Ein gesetzter Standort ersetzt die Ortung — dann interessiert deren Zustand nicht.
-  if (!store.isManualPosition) {
-    if (geo.status.value === 'idle') {
-      return {
-        tone: 'muted',
-        label: 'Ortung aus',
-        detail: 'Einschalten oder Standort setzen',
-      }
-    }
-    if (geo.status.value === 'locating') {
-      return { tone: 'muted', label: 'Suche Standort…', detail: null }
-    }
-    if (geo.message.value) {
-      return { tone: 'bad', label: 'Ortung nicht möglich', detail: geo.message.value }
-    }
-  }
+/**
+ * Die Kernaussage der App, verdichtet auf die Farbe eines Knopfs: zählt der aktuelle
+ * Standort als Versteck? Grün ja, rot nein, grau „weiss ich nicht". Der Text dazu
+ * steckt im `title` — auf der Karte wäre er nur ein Balken, der Platz frisst.
+ */
+const locate = computed(() => {
+  const suffix = store.isManualPosition ? ' · Standort gesetzt' : ''
 
-  const suffix = store.isManualPosition ? ' · gesetzt' : ''
-  const spot = store.currentHidingSpot
-  if (spot) {
+  // Grün oder rot setzt einen bekannten Standort voraus — geortet oder gesetzt.
+  if (store.userPosition) {
+    const spot = store.currentHidingSpot
     return {
-      tone: 'ok',
-      label: 'Gültiges Versteck',
-      detail: `${spot.name} · ${formatDistance(spot.distance)}${suffix}`,
+      tone: spot ? 'ok' : 'bad',
+      hint: (spot ? `Gültiges Versteck — ${spot.name}` : 'Kein gültiges Versteck') + suffix,
     }
   }
 
-  const nearest = store.nearestStation
-  return {
-    tone: 'bad',
-    label: 'Kein gültiges Versteck',
-    detail: nearest ? `${formatDistance(nearest.distance)} bis ${nearest.name}${suffix}` : null,
-  }
+  // Ohne Balken ist der Knopf der einzige Ort, an dem der Grund stehen kann.
+  if (geo.message.value) return { tone: 'off', hint: geo.message.value }
+  if (geo.status.value === 'locating') return { tone: 'off', hint: 'Suche Standort…' }
+  return { tone: 'off', hint: 'Ortung aus — antippen zum Einschalten' }
 })
 
-/** Beschriftung des Knopfs in der Statusleiste — er hat drei Aufgaben. */
+/** Beschriftung des Ortungsknopfs — er hat drei Aufgaben. */
 const locateLabel = computed(() => {
   if (store.isManualPosition) return 'GPS nutzen'
-  return geo.status.value === 'idle' ? 'Ortung an' : 'Zentrieren'
+  // „Zentrieren" nur, wenn es auch etwas zu zentrieren gibt. Nach einer abgelehnten
+  // oder gescheiterten Ortung ist der nächste Druck ein neuer Versuch.
+  if (store.userPosition) return 'Zentrieren'
+  return geo.status.value === 'locating' ? 'Suche…' : 'Ortung an'
 })
+
+/**
+ * Ortungsfehler standen früher im Statusbalken. Ohne ihn brauchen sie einen eigenen
+ * Platz — weggeklickt bleiben sie weg, bis eine andere Meldung kommt.
+ */
+const dismissedGeoMessage = ref<string | null>(null)
+const geoNotice = computed(() =>
+  geo.message.value && geo.message.value !== dismissedGeoMessage.value ? geo.message.value : null,
+)
 
 function onLocate() {
   if (store.isManualPosition) {
     store.clearManualPosition()
-    if (geo.status.value === 'idle') geo.start()
+    if (!store.gpsPosition) geo.start()
     return
   }
-  if (geo.status.value === 'idle') geo.start()
-  else mapRef.value?.centerOnUser()
+  if (store.userPosition) mapRef.value?.centerOnUser()
+  else geo.start()
 }
 
 function onSelect(id: string) {
@@ -169,22 +166,27 @@ function onFocusConstraint(id: string) {
 
 <template>
   <div class="app">
-    <header class="status" :class="status.tone">
-      <div class="status-text">
-        <strong>{{ status.label }}</strong>
-        <span v-if="status.detail">{{ status.detail }}</span>
-      </div>
-      <button type="button" class="locate" :aria-pressed="geo.status.value === 'active'" @click="onLocate">
-        {{ locateLabel }}
-      </button>
-    </header>
-
     <main class="stage">
       <GameMap ref="mapRef" />
+
+      <button
+        type="button"
+        class="locate"
+        :class="locate.tone"
+        :title="locate.hint"
+        :aria-label="locate.hint"
+        @click="onLocate"
+      >
+        {{ locateLabel }}
+      </button>
 
       <p v-if="store.loading" class="overlay">Lade Spieldaten…</p>
       <p v-else-if="store.error" class="overlay error">
         Spieldaten konnten nicht geladen werden: {{ store.error }}
+      </p>
+      <p v-else-if="geoNotice" class="overlay error">
+        {{ geoNotice }}
+        <button type="button" @click="dismissedGeoMessage = geoNotice">OK</button>
       </p>
 
       <p v-if="store.placingPosition" class="overlay hint">
@@ -306,59 +308,38 @@ function onFocusConstraint(id: string) {
   height: 100dvh;
 }
 
-.status {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  z-index: 600;
-}
-
-.status.ok {
-  background: var(--ok-soft);
-  color: var(--ok);
-}
-
-.status.bad {
-  background: var(--bad-soft);
-  color: var(--bad);
-}
-
-.status-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.status-text strong {
-  font-size: 15px;
-}
-
-.status-text span {
-  font-size: 13px;
-  opacity: 0.85;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* Schwebt über der Karte oben rechts; die Farbe trägt die Aussage des früheren
+   Statusbalkens. Optik wie die Knöpfe unten rechts (.fab), damit die rechte Spalte
+   eine Einheit bleibt. */
 .locate {
-  flex: none;
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: 12px;
+  z-index: 550;
   min-height: 40px;
   padding: 0 14px;
-  border: 1px solid currentColor;
+  border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  color: inherit;
+  color: var(--text-muted);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  box-shadow: 0 2px 10px rgb(15 23 42 / 0.15);
   cursor: pointer;
+}
+
+/* --on-accent statt Weiss: im Dark Mode sind --ok und --bad helle Töne. */
+.locate.ok {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: var(--on-accent);
+}
+
+.locate.bad {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: var(--on-accent);
 }
 
 .stage {
@@ -369,7 +350,8 @@ function onFocusConstraint(id: string) {
 
 .overlay {
   position: absolute;
-  top: 16px;
+  /* Unter dem Ortungsknopf, sonst verdeckt die Einblendung ihn. */
+  top: calc(60px + env(safe-area-inset-top));
   left: 16px;
   right: 16px;
   margin: 0;
@@ -382,6 +364,9 @@ function onFocusConstraint(id: string) {
 }
 
 .overlay.error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--bad-soft);
   color: var(--bad);
 }
@@ -395,6 +380,7 @@ function onFocusConstraint(id: string) {
   font-weight: 600;
 }
 
+.overlay.error button,
 .overlay.hint button {
   margin-left: auto;
   padding: 6px 10px;

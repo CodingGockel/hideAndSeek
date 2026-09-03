@@ -270,6 +270,11 @@ button {
   z-index: 400;
 }
 
+/* Oben rechts schwebt der Ortungsknopf — die Zoomknöpfe rutschen darunter. */
+.leaflet-top.leaflet-right {
+  padding-top: calc(52px + env(safe-area-inset-top));
+}
+
 /* Über das eingeklappte Sheet (108 px) heben, damit die Attribution sichtbar bleibt.
    Klappt es auf, verschwindet mit der Karte auch die Attribution — das ist in Ordnung. */
 .leaflet-bottom.leaflet-left {

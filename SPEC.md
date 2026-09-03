@@ -203,17 +203,22 @@ DOM-Marker-Rendering beim Zoomen spürbar ruckelig, Canvas nicht.
 
 ```
 ┌──────────────────────────┐
-│ ▸ Statusleiste  (schlank)│  Rolle · aktive Frage · Timer
-├──────────────────────────┤
-│                          │
+│                  [Ortung]│  grau: aus · grün: gültiges Versteck · rot: keins
+│                      +/− │
 │         KARTE            │  Vollbild, Spielgebiet abgesetzt
-│                       ⊙  │  FAB: eigener Standort
 │                          │
+│              [Standard]  │  Karte · Standort setzen · Alle Radien
 ├──────────────────────────┤
-│ ══ Bottom Sheet ══       │  peek: „12 Stationen in der Nähe"
-│ Stationen · Filter       │  halb: Liste  ·  voll: Detail
+│ ══ Bottom Sheet ══       │  peek: „12 Haltestellen in der Nähe"
+│ Haltestellen · Filter    │  halb: Liste  ·  voll: Detail
 └──────────────────────────┘
 ```
+
+Ein Statusbalken über der Karte war der erste Entwurf; er kostete rund 56 px Höhe für
+eine Aussage, die in eine Farbe passt. Geblieben ist der Ortungsknopf oben rechts: er
+ist zugleich Schalter (Ortung an · Zentrieren · GPS nutzen) und Anzeige — grau ohne
+Standort, grün im Versteck-Radius, rot ausserhalb. Der ausführliche Text steht im
+`title`, Ortungsfehler erscheinen als wegklickbare Einblendung.
 
 Harte Regeln, weil das Ding im Zug mit einer Hand bedient wird:
 - `100dvh` statt `100vh`, plus `env(safe-area-inset-*)` — sonst verdeckt die iOS-Leiste die Controls
