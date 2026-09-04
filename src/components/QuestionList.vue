@@ -267,6 +267,11 @@ function onShare(question: Question) {
 }
 
 .row {
+  /* Knopf und Platzhalter teilen sich diese Breite. Standen die Werte getrennt da,
+     war der Platzhalter 4 px schmaler als der Knopf — und in jeder Zeile ohne
+     Kartenknopf rutschte der Senden-Knopf daneben um genau diese 4 px nach rechts. */
+  --row-action: 34px;
+
   display: flex;
   align-items: center;
   gap: 10px;
@@ -322,8 +327,8 @@ function onShare(question: Question) {
   flex: none;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: var(--row-action);
+  height: var(--row-action);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -350,9 +355,10 @@ function onShare(question: Question) {
   color: var(--on-accent);
 }
 
+/* Steht an der Stelle des Kartenknopfs und muss ihn deshalb genau ersetzen. */
 .no-viz {
   flex: none;
-  width: 30px;
+  width: var(--row-action);
   text-align: center;
   color: var(--border-strong);
 }
