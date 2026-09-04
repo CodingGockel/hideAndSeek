@@ -15,6 +15,7 @@ const POIS = new URL('../public/data/poi.json', import.meta.url)
 const STATIONS = new URL('../public/data/stations.json', import.meta.url)
 const AREA = new URL('../public/data/area.geojson', import.meta.url)
 const DIVISIONS = new URL('../public/data/divisions/', import.meta.url)
+const BORDERS = new URL('../public/data/borders/', import.meta.url)
 const OUT = new URL('../public/data/questions.json', import.meta.url)
 
 /**
@@ -63,6 +64,18 @@ const POI_BY_LABEL = {
  * nachschlagbar — Gemeentegrenzen zeigt zur Not Google Maps, Wijk und Buurt die
  * CBS-Wijk- und Buurtkarte.
  */
+/**
+ * Fragetext -> Grenzlinie, aus scripts/fetch-borders.mjs.
+ *
+ * Die Landesgrenze ist die einzige Grenze im Spiel, die keine Fläche umschliesst, in der
+ * jemand stehen könnte — gefragt ist nur der Abstand zu ihr. Sie liegt rund hundert
+ * Kilometer östlich des Spielfelds; die Frage läuft damit praktisch auf „stehst du
+ * weiter östlich als ich?" hinaus und sagt über die Breite des Felds sehr wohl etwas aus.
+ */
+const BORDER_BY_LABEL = {
+  'International Border': 'international',
+}
+
 const DIVISION_BY_LABEL = {
   '1st Administrative Division': 'corop',
   '2nd Administrative Division': 'gemeente',
@@ -90,6 +103,15 @@ const source = JSON.parse(await readFile(SRC, 'utf8'))
 const poiFile = JSON.parse(await readFile(POIS, 'utf8'))
 const stationFile = JSON.parse(await readFile(STATIONS, 'utf8'))
 const areaFile = JSON.parse(await readFile(AREA, 'utf8'))
+
+const borderFiles = Object.fromEntries(
+  await Promise.all(
+    [...new Set(Object.values(BORDER_BY_LABEL))].map(async (id) => [
+      id,
+      JSON.parse(await readFile(new URL(`${id}.json`, BORDERS), 'utf8')),
+    ]),
+  ),
+)
 
 const divisionLevels = [...new Set(Object.values(DIVISION_BY_LABEL))]
 const divisionFiles = Object.fromEntries(
@@ -214,6 +236,20 @@ function buildQuestion(categoryId, text) {
 
   if (categoryId === 'photos') {
     return { id: makeId(categoryId, text), label: text, viz: 'none', poiCategory: null, weak: null }
+  }
+
+  // Die Landesgrenze ist eine Linie: kein Ort, keine Fläche, nur ein Abstand.
+  const borderId = BORDER_BY_LABEL[text] ?? null
+  if (borderId) {
+    return {
+      id: makeId(categoryId, text),
+      label: text,
+      viz: 'border',
+      poiCategory: null,
+      borderId,
+      borderLabel: borderFiles[borderId].label,
+      weak: null,
+    }
   }
 
   // Verwaltungsebenen zuerst: sie zeichnen Flächen, nicht Punkte, und tragen deshalb

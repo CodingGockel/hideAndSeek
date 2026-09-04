@@ -90,6 +90,9 @@ export interface LatLon {
  *                     die Nachbarn als Umriss (Matching)
  * - `division-border` dasselbe Bild plus eine Linie zum nächsten Punkt auf der Grenze
  *                     dieser Fläche (Measuring)
+ * - `border`          eine Grenzlinie und die Strecke zum nächsten Punkt darauf. Die
+ *                     Landesgrenze umschliesst keine Fläche, in der jemand stünde —
+ *                     gefragt ist nur der Abstand (Measuring)
  * - `none`            nicht zeichenbar, nur abhakbar (Photos, Thermometer, Küstenlinie)
  */
 export type VizKind =
@@ -99,6 +102,7 @@ export type VizKind =
   | 'poi-isodistance'
   | 'division'
   | 'division-border'
+  | 'border'
   | 'none'
 
 export interface Question {
@@ -110,6 +114,10 @@ export interface Question {
   divisionLevel?: string | null
   /** „Gemeente", „Wijk" … für den Fragesatz, ohne dafür die Geometrie zu laden. */
   divisionLabel?: string | null
+  /** Grenzlinie aus `borders/<id>.json` — das Gegenstück für Linien. */
+  borderId?: string | null
+  /** „Landesgrenze" für den Fragesatz. */
+  borderLabel?: string | null
   radiusMeters?: number | null
   /** Gesetzt, wenn die Frage mit den vorhandenen Daten kaum etwas aussagt. */
   weak: string | null
@@ -166,6 +174,22 @@ export interface DivisionsFile {
   areas: DivisionArea[]
 }
 
+/** Ein Stück Grenze — die Wege, die sich zwei Länder teilen. */
+export interface BorderSegment {
+  /** Das Nachbarland, „Deutschland" */
+  with: string
+  geometry: GeoJSON.LineString | GeoJSON.MultiLineString
+}
+
+export interface BordersFile {
+  version: number
+  generatedAt: string
+  source: string
+  id: string
+  label: string
+  segments: BorderSegment[]
+}
+
 /**
  * Eine Frage als Geometrie auf der Karte.
  *
@@ -188,6 +212,8 @@ export interface MapPreview {
   poiCategory?: string | null
   divisionLevel?: string | null
   divisionLabel?: string | null
+  borderId?: string | null
+  borderLabel?: string | null
   createdAt: number
   /**
    * Die Frage kam von jemand anderem: zusätzlich zur Geometrie werden gestrichelte

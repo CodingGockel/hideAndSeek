@@ -75,6 +75,7 @@ nächstgelegenen Ort und eine gestrichelte Linie mit der Entfernung dorthin.
 | Measuring | dasselbe Bild wie Matching: die Frage ist eine andere, aber zu beantworten ist sie nur über die Orte und den eigenen nächsten |
 | Administrative Division | die Verwaltungsfläche, in der der Fragepunkt liegt, ausgefüllt und benannt; die Nachbarn als Umriss |
 | … Division Border | dasselbe, ungefüllt, plus eine Linie zum nächsten Punkt auf der Grenze |
+| International Border | die Landesgrenze und die Strecke zum nächsten Punkt darauf |
 | Thermometer · Photos | nicht zeichenbar, nur abhakbar |
 
 Die vier Verwaltungsebenen sind für die Niederlande **COROP-Regio · Gemeente · Wijk ·
@@ -147,17 +148,23 @@ npm run data:stations   # Haltestellen aus data/artt_verstecke.geojson
 npm run data:area       # Spielgebiet aus der Haltestellenliste
 npm run data:pois       # Orte für die Fragekarten (~2200 Objekte)
 npm run data:divisions  # Verwaltungsebenen (COROP · Gemeente · Wijk · Buurt)
+npm run data:borders    # Landesgrenze zu Deutschland und Belgien
 npm run data:questions  # Fragekarten mit Zeichen-Metadaten
 ```
 
 `data:questions` liest `jetlag_questions_medium.json` im Projektwurzelverzeichnis und
-braucht `poi.json`, `stations.json` und die Dateien aus `divisions/`, um die schwachen
-Fragen zu erkennen — also zuletzt laufen lassen (`npm run data` macht das in der richtigen
-Reihenfolge).
+braucht `poi.json`, `stations.json` und die Dateien aus `divisions/` und `borders/`, um die
+schwachen Fragen zu erkennen — also zuletzt laufen lassen (`npm run data` macht das in der
+richtigen Reihenfolge).
 
 Die Verwaltungsflächen kommen von den **CBS Gebiedsindelingen** über den PDOK-WFS
 (CC BY 4.0) — eine Adresse für alle vier Ebenen, amtlich und als fertiges GeoJSON. Die
 Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs`.
+
+Die Landesgrenze kommt aus OpenStreetMap. Der Kniff steckt in der Abfrage: ein Weg, der
+zugleich zur Grenzrelation der Niederlande *und* zu der eines Nachbarlands gehört, liegt
+auf der gemeinsamen Grenze — die Küste fällt damit von selbst heraus, weil sie nur zu
+einer der beiden Relationen gehört.
 
 Quelle der Halte ist `data/artt_verstecke.geojson` — die kuratierte Liste aller mit dem
 Amsterdam & Region Travel Ticket erreichbaren Halte (Bahn, Metro und Fähre vollständig,
@@ -204,6 +211,7 @@ Bei GitHub Pages im Unterverzeichnis muss `base` in `vite.config.ts` gesetzt wer
 public/data/            stations.json · area.geojson · config.json
                         poi.json · questions.json      ← alle beim Start geladen
 public/data/divisions/  corop · gemeente · wijk · buurt ← erst wenn eine Frage sie braucht
+public/data/borders/    international.json             ← ebenso
 scripts/                Datenerzeugung; scripts/lib/overpass.mjs teilen sich die Skripte
 src/composables/        Leaflet-Instanz, Stationsebenen, Fragen-Geometrie, Ortung
 src/stores/game.ts      Stationen, Karte, Standort

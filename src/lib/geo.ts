@@ -44,17 +44,9 @@ export function nearest<T extends { lat: number; lon: number }>(
 // Hand, wie die Haversine-Formel oben — Turf läuft in diesem Projekt nur in den
 // Build-Skripten, und für zwei Funktionen lohnt es sich im Bundle nicht.
 
-/** GeoJSON ist [lon, lat], Leaflet will [lat, lon]. */
+/** GeoJSON ist [lon, lat], Leaflet will [lat, lon]. Ringe wie Linienzüge. */
 export function toLatLngRings(geometry: GeoJSON.Geometry): L.LatLngExpression[][] {
-  if (geometry.type === 'Polygon') {
-    return geometry.coordinates.map((ring) => ring.map(([lon, lat]) => [lat, lon]))
-  }
-  if (geometry.type === 'MultiPolygon') {
-    return geometry.coordinates.flatMap((poly) =>
-      poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as L.LatLngExpression)),
-    )
-  }
-  return []
+  return edgesOf(geometry).map((edge) => edge.map(([lon, lat]) => [lat, lon] as L.LatLngExpression))
 }
 
 /** Die Ringe einer Geometrie, nach Polygonen gruppiert: erster Ring aussen, Rest Löcher. */
@@ -62,6 +54,19 @@ function polygonsOf(geometry: GeoJSON.Geometry): GeoJSON.Position[][][] {
   if (geometry.type === 'Polygon') return [geometry.coordinates]
   if (geometry.type === 'MultiPolygon') return geometry.coordinates
   return []
+}
+
+/**
+ * Alle Kantenzüge einer Geometrie — die Ringe einer Fläche wie die Züge einer Linie.
+ *
+ * Für „wie weit ist der Rand?" ist beides dasselbe: eine Folge von Strecken. Nur so
+ * kann die Landesgrenze, die keine Fläche umschliesst, denselben Weg gehen wie eine
+ * Gemeentegrenze.
+ */
+function edgesOf(geometry: GeoJSON.Geometry): GeoJSON.Position[][] {
+  if (geometry.type === 'LineString') return [geometry.coordinates]
+  if (geometry.type === 'MultiLineString') return geometry.coordinates
+  return polygonsOf(geometry).flat()
 }
 
 /** Strahlenschnitt gegen einen einzelnen Ring. */
@@ -100,7 +105,8 @@ export function containsPoint(
 }
 
 /**
- * Der nächstgelegene Punkt auf dem Rand einer Fläche, samt Entfernung.
+ * Der nächstgelegene Punkt auf dem Rand einer Fläche oder auf einer Linie, samt
+ * Entfernung.
  *
  * Gerechnet wird in einer flachen Ebene um `from`: ein Grad Breite ist überall gleich
  * lang, ein Grad Länge um den Faktor cos(Breite) kürzer. Über die paar Kilometer, um
@@ -110,7 +116,7 @@ export function containsPoint(
  * Die zurückgegebene Entfernung kommt trotzdem aus `distanceMeters`, damit auf der
  * Karte dieselbe Zahl steht wie überall sonst.
  */
-export function nearestPointOnRings(
+export function nearestPointOnEdges(
   from: { lat: number; lon: number },
   geometry: GeoJSON.Geometry,
 ): { lat: number; lon: number; distance: number } | null {
@@ -121,29 +127,27 @@ export function nearestPointOnRings(
   let best: { lat: number; lon: number } | null = null
   let bestSq = Infinity
 
-  for (const rings of polygonsOf(geometry)) {
-    for (const ring of rings) {
-      for (let i = 1; i < ring.length; i++) {
-        const [alon, alat] = ring[i - 1]
-        const [blon, blat] = ring[i]
-        const ax = x(alon)
-        const ay = y(alat)
-        const dx = x(blon) - ax
-        const dy = y(blat) - ay
+  for (const edge of edgesOf(geometry)) {
+    for (let i = 1; i < edge.length; i++) {
+      const [alon, alat] = edge[i - 1]
+      const [blon, blat] = edge[i]
+      const ax = x(alon)
+      const ay = y(alat)
+      const dx = x(blon) - ax
+      const dy = y(blat) - ay
 
-        // t ist die Position des Fusspunkts auf der Strecke, auf [0, 1] geklemmt:
-        // liegt er hinter einem Ende, ist dieses Ende der nächste Punkt.
-        const lenSq = dx * dx + dy * dy
-        const t = lenSq > 0 ? Math.max(0, Math.min(1, (-ax * dx - ay * dy) / lenSq)) : 0
+      // t ist die Position des Fusspunkts auf der Strecke, auf [0, 1] geklemmt:
+      // liegt er hinter einem Ende, ist dieses Ende der nächste Punkt.
+      const lenSq = dx * dx + dy * dy
+      const t = lenSq > 0 ? Math.max(0, Math.min(1, (-ax * dx - ay * dy) / lenSq)) : 0
 
-        const px = ax + t * dx
-        const py = ay + t * dy
-        const distSq = px * px + py * py
-        if (distSq >= bestSq) continue
+      const px = ax + t * dx
+      const py = ay + t * dy
+      const distSq = px * px + py * py
+      if (distSq >= bestSq) continue
 
-        bestSq = distSq
-        best = { lat: alat + t * (blat - alat), lon: alon + t * (blon - alon) }
-      }
+      bestSq = distSq
+      best = { lat: alat + t * (blat - alat), lon: alon + t * (blon - alon) }
     }
   }
 

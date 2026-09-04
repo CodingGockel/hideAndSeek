@@ -87,6 +87,11 @@ export function promptFor(
     if (buildDivision) return buildDivision(question.divisionLabel)
   }
 
+  // Die Landesgrenze ist keine Fläche, in der man steht: es gibt nur den Abstand.
+  if (question.borderLabel && category?.id === 'measuring') {
+    return `Bist du näher an der ${question.borderLabel} als ich oder weiter weg?`
+  }
+
   const build = category && PROMPTS_DE[category.id]
   if (build) return build(question.label, radiusMeters ?? question.radiusMeters ?? null)
   const fallback = category?.prompt ?? '{X}'

@@ -1,6 +1,8 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type {
+  BorderSegment,
+  BordersFile,
   DivisionArea,
   DivisionsFile,
   LatLon,
@@ -58,17 +60,17 @@ export const useQuestionStore = defineStore('questions', () => {
   const search = ref('')
 
   /**
-   * Die Verwaltungsebenen, je Ebene eine Datei — und erst geladen, wenn eine Frage
-   * sie braucht.
+   * Geometriedateien, die erst geladen werden, wenn eine Frage sie braucht:
+   * die vier Verwaltungsebenen und die Landesgrenze.
    *
-   * Zusammen wiegen die vier mehr als alle übrigen Laufzeitdaten, die Buurt-Ebene
-   * allein über ein Megabyte. Die meisten Runden fragen keine einzige Division-Karte;
-   * beim Start mitzuladen hiesse, das im Zug für nichts zu bezahlen.
+   * Zusammen wiegen sie mehr als alle übrigen Laufzeitdaten, die Buurt-Ebene allein
+   * über ein Megabyte. Die meisten Runden fragen keine einzige dieser Karten; beim
+   * Start mitzuladen hiesse, das im Zug für nichts zu bezahlen.
    */
-  const divisions = ref(new Map<string, DivisionsFile>())
-  /** Zählt hoch, sobald eine Ebene da ist — daran hängt das Neuzeichnen der Karte. */
-  const divisionsVersion = ref(0)
-  const pendingDivisions = new Map<string, Promise<void>>()
+  const mapData = ref(new Map<string, unknown>())
+  /** Zählt hoch, sobald eine Datei da ist — daran hängt das Neuzeichnen der Karte. */
+  const mapDataVersion = ref(0)
+  const pendingMapData = new Map<string, Promise<void>>()
 
   try {
     localStorage.removeItem(LEGACY_CONSTRAINTS_KEY)
@@ -137,31 +139,47 @@ export const useQuestionStore = defineStore('questions', () => {
   })
 
   /**
-   * Eine Ebene laden, genau einmal.
+   * Eine Geometriedatei laden, genau einmal.
    *
    * Parallele Aufrufe teilen sich dasselbe Promise: die Vorschau stösst das Laden an,
    * und ein zweiter Tipp auf dieselbe Karte darf es nicht ein zweites Mal auslösen.
    * Ein Fehler wird geschluckt und der Versuch freigegeben — die Karte zeigt dann den
-   * Fragepunkt ohne Flächen, und beim nächsten Öffnen wird es erneut versucht.
+   * Fragepunkt ohne Geometrie, und beim nächsten Öffnen wird es erneut versucht.
    */
-  function ensureDivisions(level: string | null | undefined): void {
-    if (!level || divisions.value.has(level) || pendingDivisions.has(level)) return
+  function ensureMapData(file: string | null | undefined): void {
+    if (!file || mapData.value.has(file) || pendingMapData.has(file)) return
 
-    const request = loadJson<DivisionsFile>(`divisions/${level}.json`)
-      .then((file) => {
-        divisions.value.set(level, file)
-        divisionsVersion.value++
+    const request = loadJson<unknown>(file)
+      .then((content) => {
+        mapData.value.set(file, content)
+        mapDataVersion.value++
       })
       .catch(() => {})
-      .finally(() => pendingDivisions.delete(level))
+      .finally(() => pendingMapData.delete(file))
 
-    pendingDivisions.set(level, request)
+    pendingMapData.set(file, request)
+  }
+
+  /** Welche Datei eine Frage braucht — null, wenn sie ohne auskommt. */
+  function mapDataFileFor(question: {
+    divisionLevel?: string | null
+    borderId?: string | null
+  }): string | null {
+    if (question.divisionLevel) return `divisions/${question.divisionLevel}.json`
+    if (question.borderId) return `borders/${question.borderId}.json`
+    return null
   }
 
   /** Die Flächen einer Ebene, oder eine leere Liste solange sie noch lädt. */
   function divisionsFor(level: string | null | undefined): DivisionArea[] {
     if (!level) return []
-    return divisions.value.get(level)?.areas ?? []
+    return (mapData.value.get(`divisions/${level}.json`) as DivisionsFile | undefined)?.areas ?? []
+  }
+
+  /** Die Abschnitte einer Grenzlinie, oder eine leere Liste solange sie noch lädt. */
+  function borderSegmentsFor(id: string | null | undefined): BorderSegment[] {
+    if (!id) return []
+    return (mapData.value.get(`borders/${id}.json`) as BordersFile | undefined)?.segments ?? []
   }
 
   const usedCount = computed(() => usedIds.value.size)
@@ -207,7 +225,7 @@ export const useQuestionStore = defineStore('questions', () => {
       return null
     }
 
-    ensureDivisions(question.divisionLevel)
+    ensureMapData(mapDataFileFor(question))
 
     preview.value = {
       id: '__preview',
@@ -220,6 +238,8 @@ export const useQuestionStore = defineStore('questions', () => {
       poiCategory: question.poiCategory,
       divisionLevel: question.divisionLevel ?? null,
       divisionLabel: question.divisionLabel ?? null,
+      borderId: question.borderId ?? null,
+      borderLabel: question.borderLabel ?? null,
       createdAt: Date.now(),
     }
     return preview.value
@@ -250,7 +270,7 @@ export const useQuestionStore = defineStore('questions', () => {
       return null
     }
 
-    ensureDivisions(question.divisionLevel)
+    ensureMapData(mapDataFileFor(question))
 
     preview.value = {
       id: '__preview',
@@ -263,6 +283,8 @@ export const useQuestionStore = defineStore('questions', () => {
       poiCategory: question.poiCategory,
       divisionLevel: question.divisionLevel ?? null,
       divisionLabel: question.divisionLabel ?? null,
+      borderId: question.borderId ?? null,
+      borderLabel: question.borderLabel ?? null,
       createdAt: Date.now(),
       compareToUser: true,
       senderName,
@@ -280,7 +302,7 @@ export const useQuestionStore = defineStore('questions', () => {
     search,
     preview,
     incoming,
-    divisionsVersion,
+    mapDataVersion,
     allQuestions,
     questionById,
     categoryOfQuestion,
@@ -292,6 +314,7 @@ export const useQuestionStore = defineStore('questions', () => {
     setIncoming,
     clearPreview,
     divisionsFor,
+    borderSegmentsFor,
     load,
     toggleUsed,
     clearUsed,

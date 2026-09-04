@@ -49,8 +49,8 @@ Tramhalte ausgedünnt wurden, nicht der Spielradius.)
 ### V2 — Fragekarten (umgesetzt)
 
 Alle 69 Karten aus `jetlag_questions_medium.json` stehen als durchsuchbare Liste zum
-Abhaken bereit. 41 davon lassen sich auf der Karte zeichnen (35 in V2, die sechs
-Verwaltungsebenen kamen mit V6 dazu).
+Abhaken bereit. 42 davon lassen sich auf der Karte zeichnen (35 in V2, die sechs
+Verwaltungsebenen und die Landesgrenze kamen mit V6 dazu).
 
 **Entwurfsentscheidung:** Die App nimmt keine Antworten entgegen. Sie zeigt, *worüber*
 eine Frage redet — den Umkreis, die Orte der Kategorie, den nächstgelegenen davon —, und
@@ -73,7 +73,7 @@ der Entfernung dorthin.
 | **Radar** (8) | alle | gestrichelter Kreis um den Fragepunkt |
 | **Tentacles** (4) | alle | Kreis, die Orte darin, der nächstgelegene hervorgehoben |
 | **Matching** (20) | 15 | die Orte in der Nähe (bis zu 60), der nächstgelegene hervorgehoben; bei den Verwaltungsebenen die Fläche, s. V6 |
-| **Measuring** (20) | 14 | dasselbe Bild wie Matching |
+| **Measuring** (20) | 15 | dasselbe Bild wie Matching |
 | **Thermometer** (3) | 0 | braucht Start- und Zielpunkt, s. u. |
 | **Photos** (14) | 0 | rein soziale Mechanik |
 
@@ -100,8 +100,8 @@ Gebiet zugeschnitten (500 m bis 40 km statt bis 161 km). Bei 45 × 40 km Spielge
 schliessen die oberen Original-Stufen nichts mehr aus. Dadurch 69 statt 71 Karten.
 
 Nicht zeichenbar bleiben Küstenlinie, Gewässer, Bahn- und Strassenlinien sowie Höhe über
-NN — die brauchen Liniengeometrie aus einer zweiten Quelle. Die Verwaltungsgrenzen standen
-zunächst in derselben Liste; sie sind mit V6 dazugekommen.
+NN. Die Verwaltungsgrenzen und die Landesgrenze standen zunächst in derselben Liste; sie
+sind mit V6 dazugekommen.
 
 ### V4 — Fragen verschicken (umgesetzt)
 
@@ -186,9 +186,9 @@ Ausschnitt nur um den Fragepunkt an. Steht der Sucher ein paar Kilometer weiter,
 eigene Vergleichslinie aus dem Bild — die halbe Aussage. Die Bounds schliessen jetzt bei
 `compareToUser` die eigene Position ein.
 
-### V6 — Verwaltungsebenen (umgesetzt)
+### V6 — Verwaltungsebenen und Landesgrenze (umgesetzt)
 
-Sechs Karten fragen nach Verwaltungsgebieten — vier nach der Fläche selbst („1st bis 4th
+Sieben Karten fragen nach Grenzen: sechs nach Verwaltungsgebieten — vier nach der Fläche selbst („1st bis 4th
 Administrative Division"), zwei nach dem Abstand zu ihrer Grenze. Sie waren die grösste
 zusammenhängende Lücke: Flächen statt Punkte, und dafür gab es weder Daten noch Zeichenweg.
 
@@ -255,10 +255,30 @@ nämlich den nächsten auf der Grenze der eigenen Fläche.
 Weil die Flächen einer Ebene lückenlos kacheln, ist die nächste Grenze der eigenen Fläche
 zugleich die nächste Grenze überhaupt — es muss keine zweite Fläche geprüft werden.
 
+**Die Landesgrenze** („International Border") kam als siebte Karte dazu und ist der
+einfachere Fall: sie umschliesst keine Fläche, in der jemand stünde — gefragt ist nur der
+Abstand. Damit ist sie eine **Linie**, und das erspart das, was bei OSM-Grenzen sonst die
+eigentliche Arbeit ist: Relationsmitglieder zu Ringen zusammenzusetzen. Die Wege selbst
+sind schon die Antwort.
+
+Der Kniff steckt in der Abfrage. Ein Weg, der zugleich Mitglied der Grenzrelation der
+Niederlande *und* der eines Nachbarlands ist, liegt auf der gemeinsamen Grenze; Overpass
+kann Mengen schneiden (`way.nl.other`). Die Küste fällt damit von selbst heraus — sie
+gehört nur zu einer der beiden Relationen. Übrig bleiben 420 Wege, davon 10 maritime.
+
+Aussagekräftig ist die Karte trotz der Entfernung: der westlichste Punkt der deutschen
+Grenze liegt bei Millingen (51,84 N / 5,96 O) und ist von überall im Feld der nächste, im
+Westen übernimmt Belgien. Zwischen Utrecht (64 km) und Zaandam (103 km) liegen 40 km — die
+Frage läuft auf „stehst du weiter östlich als ich?" hinaus und teilt das Feld sauber.
+Deshalb spannt auch nicht die Grenze den Ausschnitt auf, sondern die Strecke zu ihr: die
+ganze Linie im Bild hiesse, halb Mitteleuropa zu zeigen.
+
 **Im Client bleibt es bei Handarbeit** (§1): `containsPoint` als Strahlenschnitt mit
-Löchern, `nearestPointOnRings` als Punkt-zu-Strecke in einer flachen Ebene um den
-Fragepunkt. Turf läuft weiterhin nur im Build. Das Link-Schema bleibt unverändert: `q`
-trägt die Frage-ID, die Ebene kommt beim Empfänger aus `questions.json`.
+Löchern, `nearestPointOnEdges` als Punkt-zu-Strecke in einer flachen Ebene um den
+Fragepunkt. Letzteres läuft über die Kantenzüge einer Geometrie — die Ringe einer Fläche
+wie die Züge einer Linie — und trägt damit Gemeentegrenze und Landesgrenze auf demselben
+Weg. Turf läuft weiterhin nur im Build. Das Link-Schema bleibt unverändert: `q` trägt die
+Frage-ID, Ebene und Grenze kommen beim Empfänger aus `questions.json`.
 
 ### V3 — Flüche
 - Fluch-Katalog aus JSON, aktive Flüche mit Timer
@@ -331,6 +351,11 @@ nur `code`, `name` und die Geometrie; erzeugt von `scripts/fetch-divisions.mjs` 
 Gebiedsindelingen (s. V6). **Als einzige Laufzeitdaten nicht beim Start geladen**, sondern
 erst, wenn eine Frage die Ebene braucht — zusammen wiegen sie mehr als alles andere.
 
+### `borders/international.json`
+Die Landesgrenze zu Deutschland und Belgien als Linienzüge, nach Nachbarland gruppiert;
+erzeugt von `scripts/fetch-borders.mjs` aus OpenStreetMap. Wird wie die Ebenen erst bei
+Bedarf geladen.
+
 ### `questions.json`
 Erzeugt von `scripts/build-questions.mjs` aus `jetlag_questions_medium.json`: stabile ID
 je Frage (damit Häkchen einen Neustart überstehen), Visualisierungstyp, POI- oder
@@ -345,11 +370,14 @@ im Spielgebiet ist „gleiche Buurt?" fast immer „nein".
 ```
 public/data/          stations.json · area.geojson · config.json   ← zur Laufzeit geladen
 public/data/divisions/ corop · gemeente · wijk · buurt             ← erst bei Bedarf
+public/data/borders/  international.json                          ← ebenso
 scripts/
   import-stations.mjs data/artt_verstecke.geojson → stations.json
   fetch-pois.mjs      Overpass → poi.json
   fetch-divisions.mjs PDOK-WFS → divisions/*.json
-  lib/region.mjs      die Rahmen, in denen beide beschaffen
+  fetch-borders.mjs   Overpass → borders/international.json
+  lib/region.mjs      die Rahmen, in denen beschafft wird
+  lib/geojson.mjs     ausdünnen und runden, für beide Geometrie-Skripte
 src/
   components/
     GameMap.vue           Karten-Host, besitzt die Leaflet-Instanz
@@ -496,7 +524,8 @@ der Link-Rundlauf über Sende- und Empfangsweg im DOM.
   alle liegen im Spielgebiet
 - 2212 Orte in 11 Kategorien
 - 4838 Verwaltungsflächen in 4 Ebenen (17 COROP, 115 Gemeenten, 834 Wijken, 3872 Buurten)
-- 69 Fragekarten, 41 davon auf der Karte zeichenbar, 4 automatisch als schwach erkannt
+- Landesgrenze zu Deutschland und Belgien, 420 Wege
+- 69 Fragekarten, 42 davon auf der Karte zeichenbar, 4 automatisch als schwach erkannt
 
 ### Beim Bauen aufgefallen
 
@@ -534,6 +563,9 @@ der Link-Rundlauf über Sende- und Empfangsweg im DOM.
   Einpassen zog die Karte den Ausschnitt auf die 3 km des Reglers statt auf den
   nächstgelegenen Ort — beim Zeichnen fiel es nicht auf, weil Matching und Measuring
   keinen Radius benutzen.
+- Der Platzhalter, der in der Fragenliste an der Stelle eines fehlenden Kartenknopfs
+  steht, war 30 px breit, der Knopf 34. In jeder Zeile ohne Kartenknopf rutschte der
+  Senden-Knopf daneben deshalb um 4 px nach rechts. Beide hängen jetzt an einem Wert.
 - Der Beschaffungsrahmen endete im Osten bei 5,35°, das Spielgebiet reicht aber bis
   Lelystad (5,50°). Für Halte im Osten war „dein nächstes Museum" damit schlicht falsch —
   aufgefallen erst, als die Verwaltungsebenen denselben Rahmen benutzen sollten. Beide

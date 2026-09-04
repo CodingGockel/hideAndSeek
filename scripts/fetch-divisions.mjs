@@ -14,7 +14,7 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
-import simplify from '@turf/simplify'
+import { countPoints, thin } from './lib/geojson.mjs'
 import { BBOX, INNER_BBOX } from './lib/region.mjs'
 
 const WFS = 'https://service.pdok.nl/cbs/gebiedsindelingen/2025/wfs/v1_0'
@@ -49,9 +49,6 @@ const LEVELS = [
   { id: 'wijk', label: 'Wijk', layer: 'wijk', bbox: INNER_BBOX, tolerance: 25 },
   { id: 'buurt', label: 'Buurt', layer: 'buurt', bbox: INNER_BBOX, tolerance: 30 },
 ]
-
-/** Meter in Grad — die Toleranz von @turf/simplify rechnet in Koordinateneinheiten. */
-const METERS_PER_DEGREE = 111_320
 
 /**
  * Eine Seite Objekte einer Ebene.
@@ -100,21 +97,6 @@ async function fetchLevel(level) {
   return [...byCode.values()]
 }
 
-/** Koordinaten auf 5 Nachkommastellen — gut 1 m, wie im Link-Schema. */
-function round(coords) {
-  if (typeof coords[0] === 'number') return [Number(coords[0].toFixed(5)), Number(coords[1].toFixed(5))]
-  return coords.map(round)
-}
-
-/**
- * Zählt die Stützpunkte einer Geometrie — nur für die Zusammenfassung am Ende,
- * damit sichtbar ist, was das Ausdünnen gebracht hat.
- */
-function countPoints(coords) {
-  if (typeof coords[0] === 'number') return 1
-  return coords.reduce((sum, c) => sum + countPoints(c), 0)
-}
-
 await mkdir(OUT_DIR, { recursive: true })
 
 const summary = []
@@ -128,19 +110,12 @@ for (const level of LEVELS) {
 
   const areas = features.map((feature) => {
     before += countPoints(feature.geometry.coordinates)
-    // simplify arbeitet in place und will ein Feature; die mitgelieferten Properties
-    // (jrstatcode, rubriek, id, gmCode) und das Feature-eigene bbox fliegen dabei raus.
-    const simplified = simplify(
-      { type: 'Feature', properties: {}, geometry: feature.geometry },
-      { tolerance: level.tolerance / METERS_PER_DEGREE, highQuality: false, mutate: true },
-    )
-    after += countPoints(simplified.geometry.coordinates)
+    // Von den mitgelieferten Properties bleiben zwei: jrstatcode, rubriek, id, gmCode
+    // und das Feature-eigene bbox braucht die App nicht.
+    const geometry = thin(feature.geometry, level.tolerance)
+    after += countPoints(geometry.coordinates)
 
-    return {
-      code: feature.properties.statcode,
-      name: feature.properties.statnaam,
-      geometry: { type: simplified.geometry.type, coordinates: round(simplified.geometry.coordinates) },
-    }
+    return { code: feature.properties.statcode, name: feature.properties.statnaam, geometry }
   })
 
   areas.sort((a, b) => a.name.localeCompare(b.name, 'nl'))

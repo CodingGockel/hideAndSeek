@@ -208,8 +208,10 @@
         {
           "id": "measuring:international-border",
           "label": "International Border",
-          "viz": "none",
+          "viz": "border",
           "poiCategory": null,
+          "borderId": "international",
+          "borderLabel": "Landesgrenze",
           "weak": null
         },
         {

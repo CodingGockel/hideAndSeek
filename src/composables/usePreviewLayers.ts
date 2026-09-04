@@ -19,12 +19,12 @@ import {
   distanceMeters,
   formatDistance,
   nearest,
-  nearestPointOnRings,
+  nearestPointOnEdges,
   toLatLngRings,
 } from '../lib/geo'
 import { SHEET_HALF_RATIO } from '../lib/layout'
 import { cssColor, resolvedTheme } from '../lib/theme'
-import type { DivisionArea, LatLon, MapPreview } from '../types/game'
+import type { BorderSegment, DivisionArea, LatLon, MapPreview } from '../types/game'
 
 /**
  * Eigene Ebene für den Ankerpunkt, über dem Standortpunkt (z-index 650). Der Fragepunkt
@@ -400,6 +400,45 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     return viz === 'division' || viz === 'division-border'
   }
 
+  /** Der nächste Punkt auf irgendeinem Abschnitt der Grenze. */
+  function nearestOnBorder(from: LatLon, segments: BorderSegment[]) {
+    let best: { lat: number; lon: number; distance: number } | null = null
+    for (const segment of segments) {
+      const hit = nearestPointOnEdges(from, segment.geometry)
+      if (hit && (!best || hit.distance < best.distance)) best = hit
+    }
+    return best
+  }
+
+  /**
+   * Die Landesgrenze: die Linie selbst und die Strecke zum nächsten Punkt darauf.
+   *
+   * Sie umschliesst keine Fläche, in der jemand stünde — es gibt hier nichts
+   * hervorzuheben ausser der Entfernung. Deshalb bleibt die Grenze neutral und trägt
+   * nur die Beschriftung des Nachbarlands, und die Aussage steckt allein in der Linie
+   * zum Fusspunkt.
+   */
+  function drawBorder(preview: MapPreview, layers: L.Layer[]) {
+    const segments = store.borderSegmentsFor(preview.borderId)
+
+    for (const segment of segments) {
+      layers.push(
+        L.polyline(toLatLngRings(segment.geometry), {
+          renderer: renderer.value ?? undefined,
+          color: neutral(),
+          weight: 2,
+          opacity: 0.85,
+          interactive: false,
+        }).bindTooltip(`Grenze zu ${segment.with}`, { sticky: true }),
+      )
+    }
+
+    const hit = nearestOnBorder(preview.origin, segments)
+    if (hit) layers.push(originLine(preview, hit))
+
+    layers.push(anchorMarker(preview))
+  }
+
   function drawDivision(preview: MapPreview, layers: L.Layer[]) {
     const areas = store.divisionsFor(preview.divisionLevel)
     const own = areaAt(areas, preview.origin)
@@ -441,7 +480,7 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
           labelled: false,
         }),
       )
-      const hit = nearestPointOnRings(preview.origin, own.geometry)
+      const hit = nearestPointOnEdges(preview.origin, own.geometry)
       if (hit) layers.push(originLine(preview, hit))
     }
 
@@ -480,12 +519,17 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
       return
     }
 
-    // Bei der Grenzfrage gibt es den Punkt sehr wohl: der nächste Punkt auf der
-    // Grenze meiner eigenen Fläche. Zwei beschriftete Linien nebeneinander sind
-    // „näher" oder „weiter".
+    // Bei den Grenzfragen gibt es den Punkt sehr wohl. Zwei beschriftete Linien
+    // nebeneinander sind „näher" oder „weiter".
     if (preview.viz === 'division-border') {
       const mine = areaAt(store.divisionsFor(preview.divisionLevel), me)
-      const hit = mine && nearestPointOnRings(me, mine.geometry)
+      const hit = mine && nearestPointOnEdges(me, mine.geometry)
+      if (hit) layers.push(compareLine(me, hit))
+      return
+    }
+
+    if (preview.viz === 'border') {
+      const hit = nearestOnBorder(me, store.borderSegmentsFor(preview.borderId))
       if (hit) layers.push(compareLine(me, hit))
       return
     }
@@ -546,6 +590,7 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
       else if (preview.viz === 'poi-within') drawPoiWithin(preview, layers)
       else if (preview.viz === 'division') drawDivision(preview, layers)
       else if (preview.viz === 'division-border') drawDivisionBorder(preview, layers)
+      else if (preview.viz === 'border') drawBorder(preview, layers)
       else drawPoiNearest(preview, layers)
 
       if (preview.compareToUser) drawComparison(preview, layers)
@@ -563,9 +608,9 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   // steht nur der Ankerpunkt auf der Karte; das hier trägt die Flächen nach — und mit
   // ihnen den Ausschnitt, der ohne sie nicht zu bestimmen war. Je Ebene passiert das
   // genau einmal pro Sitzung, es kommt also niemandem beim Verschieben in die Quere.
-  watch(() => store.divisionsVersion, () => {
+  watch(() => store.mapDataVersion, () => {
     draw()
-    if (isDivision(store.preview?.viz)) focusPreview()
+    if (isDivision(store.preview?.viz) || store.preview?.viz === 'border') focusPreview()
   })
 
   // Auch die Vorschau holt ihre Farben aus dem CSS — nach einem Wechsel neu zeichnen.
@@ -613,12 +658,35 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     // erst zu sehen, wenn die ganze Fläche im Bild ist. Ein Radius um den Fragepunkt
     // träfe sie nur zufällig.
     //
-    // Solange die Ebene noch lädt, wird der Ausschnitt gar nicht angefasst: der
+    // Solange die Geometrie noch lädt, wird der Ausschnitt gar nicht angefasst: der
     // Rückfall unten spannte sonst erst weit auf und sprang beim Eintreffen der Daten
     // wieder zurück. Der Aufruf kommt nach dem Laden von selbst noch einmal.
-    if (isDivision(preview.viz)) {
-      const areas = store.divisionsFor(preview.divisionLevel)
-      if (!areas.length) return
+    if (isDivision(preview.viz) && !store.divisionsFor(preview.divisionLevel).length) return
+
+    /**
+     * Die Landesgrenze ist hundert Kilometer lang und liegt ebenso weit weg. Sie ganz
+     * ins Bild zu holen hiesse, halb Mitteleuropa zu zeigen; was die Karte aussagt, ist
+     * die Strecke vom Fragepunkt zum nächsten Punkt darauf — die spannt den Ausschnitt.
+     */
+    if (preview.viz === 'border') {
+      const segments = store.borderSegmentsFor(preview.borderId)
+      if (!segments.length) return
+
+      const hit = nearestOnBorder(preview.origin, segments)
+      if (!hit) return
+
+      const borderBounds = L.latLngBounds([
+        [preview.origin.lat, preview.origin.lon],
+        [hit.lat, hit.lon],
+      ])
+      const position = game.userPosition
+      if (preview.compareToUser && position) borderBounds.extend([position.lat, position.lon])
+      map.value.fitBounds(borderBounds, {
+        paddingTopLeft: [40, 40],
+        paddingBottomRight: [40, Math.round(window.innerHeight * SHEET_HALF_RATIO)],
+        maxZoom: 15,
+      })
+      return
     }
 
     const own = isDivision(preview.viz)
