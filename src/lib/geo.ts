@@ -1,3 +1,5 @@
+import type L from 'leaflet'
+
 /** Luftlinie zwischen zwei Punkten in Metern (Haversine). */
 export function distanceMeters(
   a: { lat: number; lon: number },
@@ -33,9 +35,117 @@ export function nearest<T extends { lat: number; lon: number }>(
   return best
 }
 
+// ---------------------------------------------------------------------------
+// Flächen
+// ---------------------------------------------------------------------------
+//
+// Die Verwaltungsebenen sind Polygone, keine Punkte. Was sie brauchen, sind zwei
+// Fragen: „liege ich darin?" und „wie weit ist der Rand?". Beides steht hier von
+// Hand, wie die Haversine-Formel oben — Turf läuft in diesem Projekt nur in den
+// Build-Skripten, und für zwei Funktionen lohnt es sich im Bundle nicht.
+
+/** GeoJSON ist [lon, lat], Leaflet will [lat, lon]. */
+export function toLatLngRings(geometry: GeoJSON.Geometry): L.LatLngExpression[][] {
+  if (geometry.type === 'Polygon') {
+    return geometry.coordinates.map((ring) => ring.map(([lon, lat]) => [lat, lon]))
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.flatMap((poly) =>
+      poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as L.LatLngExpression)),
+    )
+  }
+  return []
+}
+
+/** Die Ringe einer Geometrie, nach Polygonen gruppiert: erster Ring aussen, Rest Löcher. */
+function polygonsOf(geometry: GeoJSON.Geometry): GeoJSON.Position[][][] {
+  if (geometry.type === 'Polygon') return [geometry.coordinates]
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates
+  return []
+}
+
+/** Strahlenschnitt gegen einen einzelnen Ring. */
+function inRing(ring: GeoJSON.Position[], point: { lat: number; lon: number }): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (
+      yi > point.lat !== yj > point.lat &&
+      point.lon < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
 /**
- * Die Mittelsenkrechte zwischen zwei Punkten als Strecke.
+ * Liegt der Punkt in der Fläche?
  *
- * Beim Thermometer trennt sie die Punkte, die näher an `a` liegen, von denen näher
- * an `b` — genau die Aussage von „wärmer oder kälter".
+ * Löcher zählen: der Punkt muss im äusseren Ring liegen und in keinem inneren. Der
+ * Amsterdamer Stadtteil, in dem ein See ausgespart ist, wäre sonst falsch beantwortet.
  */
+export function containsPoint(
+  geometry: GeoJSON.Geometry,
+  point: { lat: number; lon: number },
+): boolean {
+  for (const rings of polygonsOf(geometry)) {
+    const [outer, ...holes] = rings
+    if (!outer || !inRing(outer, point)) continue
+    if (holes.some((hole) => inRing(hole, point))) continue
+    return true
+  }
+  return false
+}
+
+/**
+ * Der nächstgelegene Punkt auf dem Rand einer Fläche, samt Entfernung.
+ *
+ * Gerechnet wird in einer flachen Ebene um `from`: ein Grad Breite ist überall gleich
+ * lang, ein Grad Länge um den Faktor cos(Breite) kürzer. Über die paar Kilometer, um
+ * die es hier geht, ist das von der Kugel nicht zu unterscheiden — und es macht aus
+ * dem Abstand Punkt-zu-Strecke eine Zeile statt einer Fallunterscheidung.
+ *
+ * Die zurückgegebene Entfernung kommt trotzdem aus `distanceMeters`, damit auf der
+ * Karte dieselbe Zahl steht wie überall sonst.
+ */
+export function nearestPointOnRings(
+  from: { lat: number; lon: number },
+  geometry: GeoJSON.Geometry,
+): { lat: number; lon: number; distance: number } | null {
+  const scale = Math.cos((from.lat * Math.PI) / 180)
+  const x = (lon: number) => (lon - from.lon) * scale
+  const y = (lat: number) => lat - from.lat
+
+  let best: { lat: number; lon: number } | null = null
+  let bestSq = Infinity
+
+  for (const rings of polygonsOf(geometry)) {
+    for (const ring of rings) {
+      for (let i = 1; i < ring.length; i++) {
+        const [alon, alat] = ring[i - 1]
+        const [blon, blat] = ring[i]
+        const ax = x(alon)
+        const ay = y(alat)
+        const dx = x(blon) - ax
+        const dy = y(blat) - ay
+
+        // t ist die Position des Fusspunkts auf der Strecke, auf [0, 1] geklemmt:
+        // liegt er hinter einem Ende, ist dieses Ende der nächste Punkt.
+        const lenSq = dx * dx + dy * dy
+        const t = lenSq > 0 ? Math.max(0, Math.min(1, (-ax * dx - ay * dy) / lenSq)) : 0
+
+        const px = ax + t * dx
+        const py = ay + t * dy
+        const distSq = px * px + py * py
+        if (distSq >= bestSq) continue
+
+        bestSq = distSq
+        best = { lat: alat + t * (blat - alat), lon: alon + t * (blon - alon) }
+      }
+    }
+  }
+
+  return best ? { ...best, distance: distanceMeters(from, best) } : null
+}

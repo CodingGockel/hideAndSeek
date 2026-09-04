@@ -13,6 +13,8 @@ import { slug } from './lib/overpass.mjs'
 const SRC = new URL('../jetlag_questions_medium.json', import.meta.url)
 const POIS = new URL('../public/data/poi.json', import.meta.url)
 const STATIONS = new URL('../public/data/stations.json', import.meta.url)
+const AREA = new URL('../public/data/area.geojson', import.meta.url)
+const DIVISIONS = new URL('../public/data/divisions/', import.meta.url)
 const OUT = new URL('../public/data/questions.json', import.meta.url)
 
 /**
@@ -47,6 +49,29 @@ const POI_BY_LABEL = {
   'Rail Station': 'station',
 }
 
+/**
+ * Fragetext -> Verwaltungsebene, aus scripts/fetch-divisions.mjs.
+ *
+ * Die Niederlande kennen formal nur zwei Ebenen, Provincie -> Gemeente. Als 1. Ebene
+ * ist die Provinz hier trotzdem unbrauchbar: im Spielfeld liegen drei, rund vier
+ * Fünftel davon Noord-Holland — „gleiche Provinz?" antwortet fast immer „ja" und
+ * verschenkt einen Zug. Die COROP-Gebiete (NUTS-3, amtlich, flächendeckend) bringen
+ * an derselben Stelle neun Regionen ins Feld und teilen es sauber auf.
+ *
+ * Darunter geht es mit den offiziellen CBS-Rastern weiter: Gemeente, dann Wijk, dann
+ * Buurt. Alle vier kommen aus derselben Quelle, und ihre Grenzen sind unterwegs
+ * nachschlagbar — Gemeentegrenzen zeigt zur Not Google Maps, Wijk und Buurt die
+ * CBS-Wijk- und Buurtkarte.
+ */
+const DIVISION_BY_LABEL = {
+  '1st Administrative Division': 'corop',
+  '2nd Administrative Division': 'gemeente',
+  '3rd Administrative Division': 'wijk',
+  '4th Administrative Division': 'buurt',
+  '1st Administrative Division Border': 'corop',
+  '2nd Administrative Division Border': 'gemeente',
+}
+
 function formatMeters(m) {
   if (m < 1000) return `${m} m`
   const km = m / 1000
@@ -64,12 +89,69 @@ function parseTentacle(text) {
 const source = JSON.parse(await readFile(SRC, 'utf8'))
 const poiFile = JSON.parse(await readFile(POIS, 'utf8'))
 const stationFile = JSON.parse(await readFile(STATIONS, 'utf8'))
+const areaFile = JSON.parse(await readFile(AREA, 'utf8'))
+
+const divisionLevels = [...new Set(Object.values(DIVISION_BY_LABEL))]
+const divisionFiles = Object.fromEntries(
+  await Promise.all(
+    divisionLevels.map(async (id) => [
+      id,
+      JSON.parse(await readFile(new URL(`${id}.json`, DIVISIONS), 'utf8')),
+    ]),
+  ),
+)
 
 const poiCounts = poiFile.pois.reduce((acc, p) => ({ ...acc, [p.category]: (acc[p.category] ?? 0) + 1 }), {})
 // „Rail Station" meint Bahnhöfe — die Liste enthält auch Tram- und Bushaltestellen.
 poiCounts.station = stationFile.stations.filter(
   (s) => s.ticketValid !== false && s.isStation,
 ).length
+
+/** Umschliessendes Rechteck einer GeoJSON-Geometrie als [west, süd, ost, nord]. */
+function boundsOf(coords, box = [180, 90, -180, -90]) {
+  if (typeof coords[0] === 'number') {
+    const [lon, lat] = coords
+    return [Math.min(box[0], lon), Math.min(box[1], lat), Math.max(box[2], lon), Math.max(box[3], lat)]
+  }
+  return coords.reduce((acc, c) => boundsOf(c, acc), box)
+}
+
+/** Liegt der Punkt im Ring? Strahlenschnitt, [lon, lat]. */
+function inRing(ring, [lon, lat]) {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
+
+// Das Spielgebiet ist die konvexe Hülle über alle bespielbaren Halte (build-area.mjs),
+// ein einzelnes Polygon ohne Löcher.
+const areaRing = areaFile.features[0].geometry.coordinates[0]
+
+/**
+ * Wie viele Flächen einer Ebene liegen im Spielgebiet?
+ *
+ * Die Dateien reichen bewusst über das Gebiet hinaus — für „wie weit ist die nächste
+ * Grenze?" muss auch die Nachbargemeente dabei sein. Für die Frage, ob eine Karte
+ * etwas aussagt, zählt dagegen nur, worin die Spieler überhaupt stehen können.
+ *
+ * Geprüft wird der Mittelpunkt des umschliessenden Rechtecks gegen die Hülle, nicht
+ * das Rechteck gegen das Rechteck der Hülle: die Hülle ist ein schräges Vieleck, ihr
+ * Rechteck nimmt an den Ecken ganze Landstriche mit. Auf Wijk-Ebene macht das den
+ * Unterschied zwischen „schwach" und „brauchbar", also darf es nicht danebenliegen.
+ */
+const divisionCounts = Object.fromEntries(
+  Object.entries(divisionFiles).map(([id, file]) => [
+    id,
+    file.areas.filter((a) => {
+      const [west, south, east, north] = boundsOf(a.geometry.coordinates)
+      return inRing(areaRing, [(west + east) / 2, (south + north) / 2])
+    }).length,
+  ]),
+)
 
 /**
  * Wie aussagekräftig ist die Frage mit den tatsächlich vorhandenen Daten?
@@ -80,7 +162,16 @@ poiCounts.station = stationFile.stations.filter(
  * Bahnhof stand. Seit auch Tram- und Bushaltestellen Verstecke sind, sagt die
  * Frage wieder etwas aus.
  */
-function weaknessOf(viz, poiCategory) {
+function weaknessOf(viz, poiCategory, divisionLevel) {
+  if (divisionLevel) {
+    const count = divisionCounts[divisionLevel] ?? 0
+    // Nur die Matching-Karte lebt von der Identität der Fläche. „Wie weit ist die
+    // nächste Grenze?" sagt auch bei tausend Buurten etwas aus.
+    if (viz !== 'division') return null
+    if (count < 3) return `nur ${count} im Spielgebiet — Antwort ist fast immer „ja"`
+    if (count > 500) return `${count} im Spielgebiet — Antwort ist fast immer „nein"`
+    return null
+  }
   if (!poiCategory) return null
   const count = poiCounts[poiCategory] ?? 0
   if (count === 0) return 'keine Daten in der Region'
@@ -123,6 +214,23 @@ function buildQuestion(categoryId, text) {
 
   if (categoryId === 'photos') {
     return { id: makeId(categoryId, text), label: text, viz: 'none', poiCategory: null, weak: null }
+  }
+
+  // Verwaltungsebenen zuerst: sie zeichnen Flächen, nicht Punkte, und tragen deshalb
+  // keine POI-Kategorie.
+  const divisionLevel = DIVISION_BY_LABEL[text] ?? null
+  if (divisionLevel) {
+    // Matching fragt nach der Fläche selbst, Measuring nach dem Abstand zu ihrer Grenze.
+    const viz = categoryId === 'matching' ? 'division' : 'division-border'
+    return {
+      id: makeId(categoryId, text),
+      label: text,
+      viz,
+      poiCategory: null,
+      divisionLevel,
+      divisionLabel: divisionFiles[divisionLevel].label,
+      weak: weaknessOf(viz, null, divisionLevel),
+    }
   }
 
   const poiCategory = POI_BY_LABEL[text] ?? null

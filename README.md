@@ -73,11 +73,20 @@ nächstgelegenen Ort und eine gestrichelte Linie mit der Entfernung dorthin.
 | Tentacles | Kreis plus alle Orte der Kategorie darin, je mit Piktogramm (Museum, Zoo, Kino …), der nächstgelegene hervorgehoben |
 | Matching | die Orte in der Nähe (bis zu 60), der nächstgelegene hervorgehoben |
 | Measuring | dasselbe Bild wie Matching: die Frage ist eine andere, aber zu beantworten ist sie nur über die Orte und den eigenen nächsten |
+| Administrative Division | die Verwaltungsfläche, in der der Fragepunkt liegt, ausgefüllt und benannt; die Nachbarn als Umriss |
+| … Division Border | dasselbe, ungefüllt, plus eine Linie zum nächsten Punkt auf der Grenze |
 | Thermometer · Photos | nicht zeichenbar, nur abhakbar |
 
+Die vier Verwaltungsebenen sind für die Niederlande **COROP-Regio · Gemeente · Wijk ·
+Buurt**. Formal kennt das Land nur Provinz und Gemeinde, aber als 1. Ebene taugt die
+Provinz hier nicht: im Spielfeld liegen drei, vier Fünftel davon Noord-Holland — „gleiche
+Provinz?" antwortet fast immer „ja". Die COROP-Gebiete sind an derselben Stelle neun
+Regionen und teilen das Feld sauber auf.
+
 Fragen, die mit den vorhandenen Daten kaum etwas aussagen, sind als **schwach** markiert —
-etwa „gleicher nächster Flughafen?" (es gibt nur Schiphol, die Antwort ist immer ja) oder
-„gleicher nächster Park?" (über tausend Parks, die Antwort ist fast immer nein).
+etwa „gleicher nächster Flughafen?" (nur Schiphol und Lelystad, die Antwort ist fast immer
+ja), „gleicher nächster Park?" (über tausend Parks) oder „gleiche Buurt?" (rund zweitausend
+im Spielgebiet, die Antwort ist fast immer nein).
 
 Radar- und Thermometer-Werte sind metrisch und auf euer Gebiet zugeschnitten (500 m bis
 40 km) statt der Original-Meilen bis 161 km, die bei 45 × 40 km Spielgebiet nichts mehr
@@ -136,13 +145,19 @@ losgefahren ist, steht in der Nachricht davor.
 npm run data            # alles neu erzeugen
 npm run data:stations   # Haltestellen aus data/artt_verstecke.geojson
 npm run data:area       # Spielgebiet aus der Haltestellenliste
-npm run data:pois       # Orte für die Fragekarten (~2000 Objekte)
+npm run data:pois       # Orte für die Fragekarten (~2200 Objekte)
+npm run data:divisions  # Verwaltungsebenen (COROP · Gemeente · Wijk · Buurt)
 npm run data:questions  # Fragekarten mit Zeichen-Metadaten
 ```
 
 `data:questions` liest `jetlag_questions_medium.json` im Projektwurzelverzeichnis und
-braucht `poi.json` und `stations.json`, um die schwachen Fragen zu erkennen — also nach
-den beiden anderen laufen lassen (`npm run data` macht das in der richtigen Reihenfolge).
+braucht `poi.json`, `stations.json` und die Dateien aus `divisions/`, um die schwachen
+Fragen zu erkennen — also zuletzt laufen lassen (`npm run data` macht das in der richtigen
+Reihenfolge).
+
+Die Verwaltungsflächen kommen von den **CBS Gebiedsindelingen** über den PDOK-WFS
+(CC BY 4.0) — eine Adresse für alle vier Ebenen, amtlich und als fertiges GeoJSON. Die
+Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs`.
 
 Quelle der Halte ist `data/artt_verstecke.geojson` — die kuratierte Liste aller mit dem
 Amsterdam & Region Travel Ticket erreichbaren Halte (Bahn, Metro und Fähre vollständig,
@@ -187,7 +202,8 @@ Bei GitHub Pages im Unterverzeichnis muss `base` in `vite.config.ts` gesetzt wer
 
 ```
 public/data/            stations.json · area.geojson · config.json
-                        poi.json · questions.json      ← alle zur Laufzeit geladen
+                        poi.json · questions.json      ← alle beim Start geladen
+public/data/divisions/  corop · gemeente · wijk · buurt ← erst wenn eine Frage sie braucht
 scripts/                Datenerzeugung; scripts/lib/overpass.mjs teilen sich die Skripte
 src/composables/        Leaflet-Instanz, Stationsebenen, Fragen-Geometrie, Ortung
 src/stores/game.ts      Stationen, Karte, Standort

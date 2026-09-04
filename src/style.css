@@ -377,3 +377,16 @@ button {
 .leaflet-tooltip.distance-label::before {
   display: none;
 }
+
+/* Name einer Verwaltungsfläche, mitten in ihr. Wie das Entfernungsetikett ohne
+   Spitze — er beschriftet eine Fläche, nicht einen Punkt —, aber neutral gerahmt:
+   die Fläche trägt ihre Farbe schon selbst, ein zweites Mal wäre es zu viel. */
+.leaflet-tooltip.division-label {
+  padding: 1px 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip.division-label::before {
+  display: none;
+}

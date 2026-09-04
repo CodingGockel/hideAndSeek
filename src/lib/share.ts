@@ -57,6 +57,20 @@ const PROMPTS_DE: Record<string, (label: string, radiusMeters: number | null) =>
 }
 
 /**
+ * Die Verwaltungsebenen brauchen einen eigenen Satz.
+ *
+ * Der Matching-Rahmen fragt nach dem *nächstgelegenen* — bei einer Fläche, in der man
+ * steht, ergäbe das „ist der nächstgelegene 2nd Administrative Division bei dir
+ * derselbe". Und anders als die Kartennamen sind die Ebenen keine Aufschrift auf einer
+ * Karte, sondern etwas, das unterwegs nachgeschlagen wird: „Gemeente" und „Wijk" stehen
+ * so auf der niederländischen Karte, also stehen sie so auch im Chat.
+ */
+const DIVISION_PROMPTS_DE: Record<string, (level: string) => string> = {
+  matching: (level) => `Bist du in derselben ${level} wie ich?`,
+  measuring: (level) => `Bist du näher an einer ${level}-Grenze als ich oder weiter weg?`,
+}
+
+/**
  * Der Fragesatz, wie er in der Nachricht und beim Empfänger steht.
  *
  * Ohne passenden Rahmen bleibt `category.prompt` aus den Daten — englisch, aber
@@ -68,6 +82,11 @@ export function promptFor(
   question: Question,
   radiusMeters: number | null,
 ): string {
+  if (category && question.divisionLabel) {
+    const buildDivision = DIVISION_PROMPTS_DE[category.id]
+    if (buildDivision) return buildDivision(question.divisionLabel)
+  }
+
   const build = category && PROMPTS_DE[category.id]
   if (build) return build(question.label, radiusMeters ?? question.radiusMeters ?? null)
   const fallback = category?.prompt ?? '{X}'

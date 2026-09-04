@@ -86,15 +86,30 @@ export interface LatLon {
  *                     „näher" war — ohne Ja/Nein gibt es nichts mehr einzufärben, und
  *                     zum Spielen zählen die Orte selbst. Der eigene Wert bleibt, weil
  *                     die Frage eine andere ist: Abstand statt Identität.
- * - `none`            nicht zeichenbar, nur abhakbar (Photos, Thermometer, Grenzen)
+ * - `division`        die Verwaltungsfläche, in der der Fragepunkt liegt, hervorgehoben,
+ *                     die Nachbarn als Umriss (Matching)
+ * - `division-border` dasselbe Bild plus eine Linie zum nächsten Punkt auf der Grenze
+ *                     dieser Fläche (Measuring)
+ * - `none`            nicht zeichenbar, nur abhakbar (Photos, Thermometer, Küstenlinie)
  */
-export type VizKind = 'radius' | 'poi-within' | 'poi-nearest' | 'poi-isodistance' | 'none'
+export type VizKind =
+  | 'radius'
+  | 'poi-within'
+  | 'poi-nearest'
+  | 'poi-isodistance'
+  | 'division'
+  | 'division-border'
+  | 'none'
 
 export interface Question {
   id: string
   label: string
   viz: VizKind
   poiCategory: string | null
+  /** Ebene aus `divisions/<level>.json` — das Gegenstück zu `poiCategory` für Flächen. */
+  divisionLevel?: string | null
+  /** „Gemeente", „Wijk" … für den Fragesatz, ohne dafür die Geometrie zu laden. */
+  divisionLabel?: string | null
   radiusMeters?: number | null
   /** Gesetzt, wenn die Frage mit den vorhandenen Daten kaum etwas aussagt. */
   weak: string | null
@@ -133,6 +148,24 @@ export interface PoiFile {
   pois: Poi[]
 }
 
+/** Eine Verwaltungsfläche — Gemeente, Wijk, COROP-Regio, Buurt. */
+export interface DivisionArea {
+  /** Amtlicher Code, „GM0479" */
+  code: string
+  name: string
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon
+}
+
+export interface DivisionsFile {
+  version: number
+  generatedAt: string
+  source: string
+  level: string
+  label: string
+  bbox: [number, number, number, number]
+  areas: DivisionArea[]
+}
+
 /**
  * Eine Frage als Geometrie auf der Karte.
  *
@@ -153,6 +186,8 @@ export interface MapPreview {
   origin: LatLon
   radiusMeters?: number | null
   poiCategory?: string | null
+  divisionLevel?: string | null
+  divisionLabel?: string | null
   createdAt: number
   /**
    * Die Frage kam von jemand anderem: zusätzlich zur Geometrie werden gestrichelte

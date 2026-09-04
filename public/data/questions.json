@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-03",
+  "generatedAt": "2026-09-04",
   "source": "jetlag_questions_medium.json",
   "game": "Jet Lag: Hide and Seek",
   "size": "medium",
@@ -25,7 +25,7 @@
           "label": "Commercial Airport",
           "viz": "poi-nearest",
           "poiCategory": "airport",
-          "weak": "nur 1 in der Region — Antwort ist fast immer „ja\""
+          "weak": "nur 2 in der Region — Antwort ist fast immer „ja\""
         },
         {
           "id": "matching:transit-line",
@@ -51,30 +51,38 @@
         {
           "id": "matching:1st-administrative-division",
           "label": "1st Administrative Division",
-          "viz": "none",
+          "viz": "division",
           "poiCategory": null,
+          "divisionLevel": "corop",
+          "divisionLabel": "COROP-Regio",
           "weak": null
         },
         {
           "id": "matching:2nd-administrative-division",
           "label": "2nd Administrative Division",
-          "viz": "none",
+          "viz": "division",
           "poiCategory": null,
+          "divisionLevel": "gemeente",
+          "divisionLabel": "Gemeente",
           "weak": null
         },
         {
           "id": "matching:3rd-administrative-division",
           "label": "3rd Administrative Division",
-          "viz": "none",
+          "viz": "division",
           "poiCategory": null,
+          "divisionLevel": "wijk",
+          "divisionLabel": "Wijk",
           "weak": null
         },
         {
           "id": "matching:4th-administrative-division",
           "label": "4th Administrative Division",
-          "viz": "none",
+          "viz": "division",
           "poiCategory": null,
-          "weak": null
+          "divisionLevel": "buurt",
+          "divisionLabel": "Buurt",
+          "weak": "2209 im Spielgebiet — Antwort ist fast immer „nein\""
         },
         {
           "id": "matching:mountain",
@@ -95,7 +103,7 @@
           "label": "Park",
           "viz": "poi-nearest",
           "poiCategory": "park",
-          "weak": "1039 in der Region — Antwort ist fast immer „nein\""
+          "weak": "1122 in der Region — Antwort ist fast immer „nein\""
         },
         {
           "id": "matching:amusement-park",
@@ -207,15 +215,19 @@
         {
           "id": "measuring:1st-administrative-division-border",
           "label": "1st Administrative Division Border",
-          "viz": "none",
+          "viz": "division-border",
           "poiCategory": null,
+          "divisionLevel": "corop",
+          "divisionLabel": "COROP-Regio",
           "weak": null
         },
         {
           "id": "measuring:2nd-administrative-division-border",
           "label": "2nd Administrative Division Border",
-          "viz": "none",
+          "viz": "division-border",
           "poiCategory": null,
+          "divisionLevel": "gemeente",
+          "divisionLabel": "Gemeente",
           "weak": null
         },
         {

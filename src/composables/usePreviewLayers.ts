@@ -14,10 +14,17 @@ import { watch, type Ref } from 'vue'
 import L from 'leaflet'
 import { useQuestionStore } from '../stores/questions'
 import { useGameStore } from '../stores/game'
-import { distanceMeters, formatDistance, nearest } from '../lib/geo'
+import {
+  containsPoint,
+  distanceMeters,
+  formatDistance,
+  nearest,
+  nearestPointOnRings,
+  toLatLngRings,
+} from '../lib/geo'
 import { SHEET_HALF_RATIO } from '../lib/layout'
 import { cssColor, resolvedTheme } from '../lib/theme'
-import type { LatLon, MapPreview } from '../types/game'
+import type { DivisionArea, LatLon, MapPreview } from '../types/game'
 
 /**
  * Eigene Ebene für den Ankerpunkt, über dem Standortpunkt (z-index 650). Der Fragepunkt
@@ -31,6 +38,13 @@ const ANCHOR_PANE = 'preview-anchor'
  * für die Frage zählt ohnehin nur die nähere Umgebung.
  */
 const MAX_POI_MARKERS = 60
+
+/**
+ * Wie viele Nachbarflächen einer Ebene höchstens umrissen werden. Auf Buurt-Ebene
+ * liegen im Spielgebiet fast viertausend — gezeichnet wäre das ein Filz, in dem die
+ * eigene Fläche untergeht, und für die Frage zählt ohnehin nur die Umgebung.
+ */
+const MAX_DIVISION_OUTLINES = 40
 
 /**
  * Piktogramme der Ortskategorien, im 24er-Raster und geschlossen gezeichnet: bei
@@ -284,6 +298,157 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   }
 
   /**
+   * Der ungefähre Mittelpunkt einer Fläche — Mitte ihres umschliessenden Rechtecks.
+   *
+   * Reicht, um die Nachbarn nach Nähe zu sortieren; ein echter Schwerpunkt wäre für
+   * diesen Zweck Rechenzeit ohne sichtbaren Unterschied.
+   */
+  function areaCenter(area: DivisionArea): LatLon {
+    let west = 180
+    let south = 90
+    let east = -180
+    let north = -90
+    for (const ring of toLatLngRings(area.geometry)) {
+      for (const point of ring as [number, number][]) {
+        if (point[1] < west) west = point[1]
+        if (point[1] > east) east = point[1]
+        if (point[0] < south) south = point[0]
+        if (point[0] > north) north = point[0]
+      }
+    }
+    return { lat: (south + north) / 2, lon: (west + east) / 2 }
+  }
+
+  /** Die Fläche, in der der Punkt liegt — auf dem Wasser gibt es keine. */
+  function areaAt(areas: DivisionArea[], point: LatLon): DivisionArea | null {
+    return areas.find((area) => containsPoint(area.geometry, point)) ?? null
+  }
+
+  /**
+   * Eine Fläche als Polygon. Gefüllt und benannt ist nur, was die Frage entscheidet.
+   *
+   * Der Name steht nicht immer da: bei der Grenzfrage ist die Entfernung die Aussage,
+   * und deren Etikett liegt in der Mitte der Linie — also fast auf dem Fragepunkt und
+   * damit genau dort, wo auch der Flächenname landen würde. Zwei Beschriftungen
+   * übereinander, von denen die wichtigere verdeckt wird.
+   */
+  function divisionShape(
+    area: DivisionArea,
+    style: { color: string; filled: boolean; dashed?: boolean; labelled?: boolean },
+  ) {
+    const shape = L.polygon(toLatLngRings(area.geometry), {
+      renderer: renderer.value ?? undefined,
+      color: style.color,
+      weight: 3,
+      opacity: 0.95,
+      dashArray: style.dashed ? '7,5' : undefined,
+      fill: style.filled,
+      fillColor: style.color,
+      fillOpacity: 0.18,
+      interactive: false,
+    })
+
+    return style.labelled
+      ? shape.bindTooltip(area.name, {
+          permanent: true,
+          direction: 'center',
+          className: 'division-label',
+        })
+      : shape
+  }
+
+  /**
+   * Die Nachbarflächen als dünne Umrisse — sie sind der Massstab, an dem die eigene
+   * Fläche überhaupt etwas bedeutet, und bei der Border-Karte zugleich die Grenzen,
+   * um die es geht.
+   */
+  function divisionOutlines(areas: DivisionArea[], own: DivisionArea | null, layers: L.Layer[]) {
+    const origin = own ? areaCenter(own) : null
+    const neighbours = areas.filter((area) => area !== own)
+
+    const shown = origin
+      ? [...neighbours]
+          .sort((a, b) => distanceMeters(origin, areaCenter(a)) - distanceMeters(origin, areaCenter(b)))
+          .slice(0, MAX_DIVISION_OUTLINES)
+      : neighbours.slice(0, MAX_DIVISION_OUTLINES)
+
+    for (const area of shown) {
+      layers.push(
+        L.polygon(toLatLngRings(area.geometry), {
+          renderer: renderer.value ?? undefined,
+          color: neutral(),
+          // Dünner als die eigene Fläche, aber nicht zart: eine Haarlinie mit halber
+          // Deckkraft geht auf der Grundkarte zwischen Autobahnen und Kanälen
+          // vollständig unter — nachgemessen, nicht geschätzt.
+          weight: 2,
+          opacity: 0.85,
+          fill: false,
+          interactive: false,
+        }),
+      )
+    }
+  }
+
+  /**
+   * Matching auf einer Verwaltungsebene: die Fläche, in der der Fragepunkt liegt,
+   * hervorgehoben und benannt; die Nachbarn als Umriss.
+   *
+   * Solange die Ebene noch lädt, bleibt der Ankerpunkt allein stehen — die Flächen
+   * kommen nach, ein `watch` auf `divisionsVersion` zeichnet dann neu.
+   */
+  function isDivision(viz: string | undefined): boolean {
+    return viz === 'division' || viz === 'division-border'
+  }
+
+  function drawDivision(preview: MapPreview, layers: L.Layer[]) {
+    const areas = store.divisionsFor(preview.divisionLevel)
+    const own = areaAt(areas, preview.origin)
+
+    divisionOutlines(areas, own, layers)
+    // Bei einer erhaltenen Frage gehört diese Fläche dem Fragenden und bleibt neutral;
+    // die Akzentfarbe ist für die eigene reserviert.
+    if (own) {
+      layers.push(
+        divisionShape(own, {
+          color: preview.compareToUser ? neutral() : accent(),
+          filled: true,
+          labelled: true,
+        }),
+      )
+    }
+
+    layers.push(anchorMarker(preview))
+  }
+
+  /**
+   * Measuring auf einer Verwaltungsebene: dazu die gestrichelte Linie zum nächsten
+   * Punkt auf der Grenze, beschriftet mit der Entfernung.
+   *
+   * Weil die Flächen einer Ebene lückenlos kacheln, ist die nächste Grenze der
+   * eigenen Fläche zugleich die nächste Grenze überhaupt — es muss keine zweite
+   * Fläche geprüft werden.
+   */
+  function drawDivisionBorder(preview: MapPreview, layers: L.Layer[]) {
+    const areas = store.divisionsFor(preview.divisionLevel)
+    const own = areaAt(areas, preview.origin)
+
+    divisionOutlines(areas, own, layers)
+    if (own) {
+      layers.push(
+        divisionShape(own, {
+          color: preview.compareToUser ? neutral() : accent(),
+          filled: false,
+          labelled: false,
+        }),
+      )
+      const hit = nearestPointOnRings(preview.origin, own.geometry)
+      if (hit) layers.push(originLine(preview, hit))
+    }
+
+    layers.push(anchorMarker(preview))
+  }
+
+  /**
    * Vergleichslinien zur eigenen Position, wenn die Frage von jemand anderem kam.
    *
    * Eine Regel für alle Kartentypen: von dort, wo ich stehe, eine gestrichelte Linie zu
@@ -298,6 +463,30 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
 
     if (preview.viz === 'radius') {
       layers.push(compareLine(me, preview.origin))
+      return
+    }
+
+    /**
+     * Bei den Verwaltungsebenen entscheidet keine Punktentfernung, sondern eine
+     * Fläche — eine Linie hätte nichts, worauf sie zeigen könnte. Statt ihrer wird
+     * die eigene Fläche in der Akzentfarbe umrissen und benannt. Ist es dieselbe wie
+     * die des Fragenden, liegt ein Umriss auf dem anderen und die Antwort steht da.
+     */
+    if (preview.viz === 'division') {
+      const mine = areaAt(store.divisionsFor(preview.divisionLevel), me)
+      if (mine) {
+        layers.push(divisionShape(mine, { color: accent(), filled: false, dashed: true, labelled: true }))
+      }
+      return
+    }
+
+    // Bei der Grenzfrage gibt es den Punkt sehr wohl: der nächste Punkt auf der
+    // Grenze meiner eigenen Fläche. Zwei beschriftete Linien nebeneinander sind
+    // „näher" oder „weiter".
+    if (preview.viz === 'division-border') {
+      const mine = areaAt(store.divisionsFor(preview.divisionLevel), me)
+      const hit = mine && nearestPointOnRings(me, mine.geometry)
+      if (hit) layers.push(compareLine(me, hit))
       return
     }
 
@@ -355,6 +544,8 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
 
       if (preview.viz === 'radius') drawRadius(preview, layers)
       else if (preview.viz === 'poi-within') drawPoiWithin(preview, layers)
+      else if (preview.viz === 'division') drawDivision(preview, layers)
+      else if (preview.viz === 'division-border') drawDivisionBorder(preview, layers)
       else drawPoiNearest(preview, layers)
 
       if (preview.compareToUser) drawComparison(preview, layers)
@@ -367,6 +558,15 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   }
 
   watch(() => store.preview, draw, { deep: true })
+
+  // Die Verwaltungsebenen werden erst geladen, wenn eine Frage sie braucht. Bis dahin
+  // steht nur der Ankerpunkt auf der Karte; das hier trägt die Flächen nach — und mit
+  // ihnen den Ausschnitt, der ohne sie nicht zu bestimmen war. Je Ebene passiert das
+  // genau einmal pro Sitzung, es kommt also niemandem beim Verschieben in die Quere.
+  watch(() => store.divisionsVersion, () => {
+    draw()
+    if (isDivision(store.preview?.viz)) focusPreview()
+  })
 
   // Auch die Vorschau holt ihre Farben aus dem CSS — nach einem Wechsel neu zeichnen.
   watch(resolvedTheme, draw)
@@ -408,6 +608,33 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     if (!preview || !map.value) return
 
     const origin = L.latLng(preview.origin.lat, preview.origin.lon)
+
+    // Bei einer Fläche gibt sie den Ausschnitt vor: „welche Gemeente ist das?" ist
+    // erst zu sehen, wenn die ganze Fläche im Bild ist. Ein Radius um den Fragepunkt
+    // träfe sie nur zufällig.
+    //
+    // Solange die Ebene noch lädt, wird der Ausschnitt gar nicht angefasst: der
+    // Rückfall unten spannte sonst erst weit auf und sprang beim Eintreffen der Daten
+    // wieder zurück. Der Aufruf kommt nach dem Laden von selbst noch einmal.
+    if (isDivision(preview.viz)) {
+      const areas = store.divisionsFor(preview.divisionLevel)
+      if (!areas.length) return
+    }
+
+    const own = isDivision(preview.viz)
+      ? areaAt(store.divisionsFor(preview.divisionLevel), preview.origin)
+      : null
+    if (own) {
+      const areaBounds = L.latLngBounds(toLatLngRings(own.geometry).flat())
+      const position = game.userPosition
+      if (preview.compareToUser && position) areaBounds.extend([position.lat, position.lon])
+      map.value.fitBounds(areaBounds, {
+        paddingTopLeft: [40, 40],
+        paddingBottomRight: [40, Math.round(window.innerHeight * SHEET_HALF_RATIO)],
+        maxZoom: 15,
+      })
+      return
+    }
 
     // Ein Radius gibt den Ausschnitt vor. Ohne ihn (Matching, Measuring) spannt der
     // nächstgelegene Ort ihn auf: die Linie dorthin ist die Aussage der Karte und muss

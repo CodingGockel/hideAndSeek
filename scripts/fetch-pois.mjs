@@ -11,9 +11,8 @@
  */
 import { writeFile } from 'node:fs/promises'
 import { overpass, slug } from './lib/overpass.mjs'
+import { BBOX } from './lib/region.mjs'
 
-// S, W, N, O — Spielgebiet plus rund 20 km Rand.
-const BBOX = [52.0, 4.25, 52.76, 5.35]
 const OUT = new URL('../public/data/poi.json', import.meta.url)
 
 /**

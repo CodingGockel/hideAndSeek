@@ -31,7 +31,16 @@ export function useLeafletMap(container: Ref<HTMLElement | null>) {
     })
 
     L.control.zoom({ position: 'topright' }).addTo(instance)
-    L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(instance)
+    L.control
+      .attribution({ position: 'bottomleft', prefix: false })
+      // Die Basiskarten bringen ihre Attribution als Layer mit; die Verwaltungsflächen
+      // sind eine Datei ohne Layer und müssen hier fest stehen. CC BY verlangt die
+      // Nennung, unabhängig davon, ob gerade eine Fläche gezeichnet ist.
+      .addAttribution(
+        'Verwaltungsgrenzen &copy; <a href="https://www.cbs.nl/">CBS</a>/' +
+          '<a href="https://www.pdok.nl/">PDOK</a> (CC BY 4.0)',
+      )
+      .addTo(instance)
 
     renderer.value = L.canvas({ padding: 0.5 }).addTo(instance)
     map.value = instance

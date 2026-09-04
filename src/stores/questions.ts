@@ -1,6 +1,8 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type {
+  DivisionArea,
+  DivisionsFile,
   LatLon,
   MapPreview,
   Poi,
@@ -54,6 +56,19 @@ export const useQuestionStore = defineStore('questions', () => {
 
   const usedIds = ref<Set<string>>(new Set(readStored<string[]>(USED_KEY, [])))
   const search = ref('')
+
+  /**
+   * Die Verwaltungsebenen, je Ebene eine Datei — und erst geladen, wenn eine Frage
+   * sie braucht.
+   *
+   * Zusammen wiegen die vier mehr als alle übrigen Laufzeitdaten, die Buurt-Ebene
+   * allein über ein Megabyte. Die meisten Runden fragen keine einzige Division-Karte;
+   * beim Start mitzuladen hiesse, das im Zug für nichts zu bezahlen.
+   */
+  const divisions = ref(new Map<string, DivisionsFile>())
+  /** Zählt hoch, sobald eine Ebene da ist — daran hängt das Neuzeichnen der Karte. */
+  const divisionsVersion = ref(0)
+  const pendingDivisions = new Map<string, Promise<void>>()
 
   try {
     localStorage.removeItem(LEGACY_CONSTRAINTS_KEY)
@@ -121,6 +136,34 @@ export const useQuestionStore = defineStore('questions', () => {
     return map
   })
 
+  /**
+   * Eine Ebene laden, genau einmal.
+   *
+   * Parallele Aufrufe teilen sich dasselbe Promise: die Vorschau stösst das Laden an,
+   * und ein zweiter Tipp auf dieselbe Karte darf es nicht ein zweites Mal auslösen.
+   * Ein Fehler wird geschluckt und der Versuch freigegeben — die Karte zeigt dann den
+   * Fragepunkt ohne Flächen, und beim nächsten Öffnen wird es erneut versucht.
+   */
+  function ensureDivisions(level: string | null | undefined): void {
+    if (!level || divisions.value.has(level) || pendingDivisions.has(level)) return
+
+    const request = loadJson<DivisionsFile>(`divisions/${level}.json`)
+      .then((file) => {
+        divisions.value.set(level, file)
+        divisionsVersion.value++
+      })
+      .catch(() => {})
+      .finally(() => pendingDivisions.delete(level))
+
+    pendingDivisions.set(level, request)
+  }
+
+  /** Die Flächen einer Ebene, oder eine leere Liste solange sie noch lädt. */
+  function divisionsFor(level: string | null | undefined): DivisionArea[] {
+    if (!level) return []
+    return divisions.value.get(level)?.areas ?? []
+  }
+
   const usedCount = computed(() => usedIds.value.size)
   const drawableCount = computed(() => allQuestions.value.filter((q) => q.viz !== 'none').length)
 
@@ -164,6 +207,8 @@ export const useQuestionStore = defineStore('questions', () => {
       return null
     }
 
+    ensureDivisions(question.divisionLevel)
+
     preview.value = {
       id: '__preview',
       questionId: question.id,
@@ -173,6 +218,8 @@ export const useQuestionStore = defineStore('questions', () => {
       origin,
       radiusMeters: radiusMeters ?? question.radiusMeters ?? null,
       poiCategory: question.poiCategory,
+      divisionLevel: question.divisionLevel ?? null,
+      divisionLabel: question.divisionLabel ?? null,
       createdAt: Date.now(),
     }
     return preview.value
@@ -203,6 +250,8 @@ export const useQuestionStore = defineStore('questions', () => {
       return null
     }
 
+    ensureDivisions(question.divisionLevel)
+
     preview.value = {
       id: '__preview',
       questionId: question.id,
@@ -212,6 +261,8 @@ export const useQuestionStore = defineStore('questions', () => {
       origin,
       radiusMeters: radiusMeters ?? question.radiusMeters ?? null,
       poiCategory: question.poiCategory,
+      divisionLevel: question.divisionLevel ?? null,
+      divisionLabel: question.divisionLabel ?? null,
       createdAt: Date.now(),
       compareToUser: true,
       senderName,
@@ -229,6 +280,7 @@ export const useQuestionStore = defineStore('questions', () => {
     search,
     preview,
     incoming,
+    divisionsVersion,
     allQuestions,
     questionById,
     categoryOfQuestion,
@@ -239,6 +291,7 @@ export const useQuestionStore = defineStore('questions', () => {
     setPreview,
     setIncoming,
     clearPreview,
+    divisionsFor,
     load,
     toggleUsed,
     clearUsed,

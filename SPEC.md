@@ -49,7 +49,8 @@ Tramhalte ausgedünnt wurden, nicht der Spielradius.)
 ### V2 — Fragekarten (umgesetzt)
 
 Alle 69 Karten aus `jetlag_questions_medium.json` stehen als durchsuchbare Liste zum
-Abhaken bereit. 35 davon lassen sich auf der Karte zeichnen.
+Abhaken bereit. 41 davon lassen sich auf der Karte zeichnen (35 in V2, die sechs
+Verwaltungsebenen kamen mit V6 dazu).
 
 **Entwurfsentscheidung:** Die App nimmt keine Antworten entgegen. Sie zeigt, *worüber*
 eine Frage redet — den Umkreis, die Orte der Kategorie, den nächstgelegenen davon —, und
@@ -71,8 +72,8 @@ der Entfernung dorthin.
 |---|---|---|
 | **Radar** (8) | alle | gestrichelter Kreis um den Fragepunkt |
 | **Tentacles** (4) | alle | Kreis, die Orte darin, der nächstgelegene hervorgehoben |
-| **Matching** (20) | 11 | die Orte in der Nähe (bis zu 60), der nächstgelegene hervorgehoben |
-| **Measuring** (20) | 12 | dasselbe Bild wie Matching |
+| **Matching** (20) | 15 | die Orte in der Nähe (bis zu 60), der nächstgelegene hervorgehoben; bei den Verwaltungsebenen die Fläche, s. V6 |
+| **Measuring** (20) | 14 | dasselbe Bild wie Matching |
 | **Thermometer** (3) | 0 | braucht Start- und Zielpunkt, s. u. |
 | **Photos** (14) | 0 | rein soziale Mechanik |
 
@@ -98,9 +99,9 @@ verschobener Punkt hielte nur bis zum nächsten Neuzeichnen.
 Gebiet zugeschnitten (500 m bis 40 km statt bis 161 km). Bei 45 × 40 km Spielgebiet
 schliessen die oberen Original-Stufen nichts mehr aus. Dadurch 69 statt 71 Karten.
 
-Nicht zeichenbar bleiben Verwaltungsgrenzen, Küstenlinie, Gewässer, Bahn- und
-Strassenlinien sowie Höhe über NN — die brauchen Polygon- und Liniengeometrie und lassen
-sich später ergänzen, ohne den Unterbau zu ändern.
+Nicht zeichenbar bleiben Küstenlinie, Gewässer, Bahn- und Strassenlinien sowie Höhe über
+NN — die brauchen Liniengeometrie aus einer zweiten Quelle. Die Verwaltungsgrenzen standen
+zunächst in derselben Liste; sie sind mit V6 dazugekommen.
 
 ### V4 — Fragen verschicken (umgesetzt)
 
@@ -185,11 +186,85 @@ Ausschnitt nur um den Fragepunkt an. Steht der Sucher ein paar Kilometer weiter,
 eigene Vergleichslinie aus dem Bild — die halbe Aussage. Die Bounds schliessen jetzt bei
 `compareToUser` die eigene Position ein.
 
+### V6 — Verwaltungsebenen (umgesetzt)
+
+Sechs Karten fragen nach Verwaltungsgebieten — vier nach der Fläche selbst („1st bis 4th
+Administrative Division"), zwei nach dem Abstand zu ihrer Grenze. Sie waren die grösste
+zusammenhängende Lücke: Flächen statt Punkte, und dafür gab es weder Daten noch Zeichenweg.
+
+**Die Zuordnung der Ebenen ist eine Spielentscheidung, keine Datenfrage.** Formal kennt
+das Land nur zwei Ebenen, Provincie → Gemeente. Als 1. Ebene taugt die Provinz hier
+trotzdem nicht: im Spielfeld liegen drei, rund vier Fünftel davon Noord-Holland. „Gleiche
+Provinz?" antwortet fast immer „ja" und verschenkt einen Zug. Genommen werden deshalb die
+offiziellen Zwischenraster des CBS:
+
+| Ebene | Raster | im Spielgebiet |
+|---|---|---|
+| 1. | COROP-Regio (NUTS-3) | 9 |
+| 2. | Gemeente | 46 |
+| 3. | Wijk | 481 |
+| 4. | Buurt | 1913 — als **schwach** markiert |
+
+Die Alternative zu COROP wäre die Veiligheidsregio gewesen (7 im Feld, unterwegs
+vielleicht geläufiger). COROP gewinnt, weil es dieselbe Quelle ist wie die drei anderen
+Ebenen und als NUTS-3-Region auch ausserhalb der Niederlande ein Begriff bleibt.
+
+Dass Buurt automatisch als schwach herauskommt, ist kein Versehen, sondern die Auskunft
+über die Ebene: `build-questions.mjs` zählt die Flächen im Spielgebiet mit derselben
+Schwelle wie bei den Orten. Gezählt wird gegen die Hülle selbst, nicht gegen ihr
+umschliessendes Rechteck — die Hülle ist ein schräges Vieleck, und über die Ecken kämen
+genug Wijken dazu, um auch Ebene 3 fälschlich über die Schwelle zu heben.
+
+**Quelle:** CBS Gebiedsindelingen über den PDOK-WFS (CC BY 4.0, Attribution steht fest in
+der Karte). Eine Adresse für alle vier Ebenen, amtlich, als fertiges GeoJSON in WGS84 —
+kein Zusammensetzen von Relationen wie bei Overpass. Drei Eigenheiten stehen als Kommentar
+im Skript: der `bbox`-Parameter ist `lat,lon`, die Ausgabe `lon,lat`; der Dienst gibt rund
+tausend Objekte je Antwort heraus und muss gepagt werden (`numberMatched` ist dabei nicht
+die Gesamtzahl, sondern zählt mit); und `bbox` filtert, es schneidet nicht — gewollt, denn
+eine am Rahmen abgeschnittene Gemeente ergäbe für die Border-Karte eine schnurgerade
+Grenze, die es nicht gibt.
+
+**Geladen wird erst bei Bedarf.** Die vier Dateien wiegen zusammen mehr als alle übrigen
+Laufzeitdaten, Buurt allein 1,1 MB. Die meisten Runden fragen keine einzige dieser Karten.
+Also lädt jede Ebene beim ersten Öffnen einer Frage, die sie braucht, und dann nie wieder.
+Bis sie da ist, steht nur der Ankerpunkt auf der Karte; ein Zähler im Store trägt die
+Flächen nach — **und mit ihnen den Ausschnitt.** Ohne das passte `focusPreview` zunächst
+auf den Rückfallwert und sprang beim Eintreffen der Daten ein zweites Mal; bei einer Wijk
+lagen dazwischen fünf Zoomstufen.
+
+**Das Bild** folgt der Regel aus V2: neutral, was die Frage umreisst, in `--accent` genau
+das, was sie entscheidet. Die Fläche, in der der Fragepunkt liegt, wird ausgefüllt und
+benannt; die 40 nächsten Nachbarn stehen als Umriss darum. Ohne sie sagt die eigene Fläche
+nichts — und bei der Border-Karte *sind* sie die Grenzen, um die es geht. Die Kappung bei
+40 ist dieselbe Überlegung wie `MAX_POI_MARKERS`: auf Buurt-Ebene lägen sonst fast
+viertausend Ringe auf der Karte.
+
+Der Name steht nur da, wo er die Antwort ist. Auf der Border-Karte ist es die Entfernung,
+und deren Etikett sitzt in der Mitte einer meist kurzen Linie — also fast auf dem
+Fragepunkt, genau dort, wo auch der Flächenname landet. Zwei Beschriftungen übereinander,
+von denen die wichtigere verdeckt wird.
+
+**Bei einer erhaltenen Frage entscheidet keine Punktentfernung, sondern eine Fläche.** Die
+Regel aus V4 — von der eigenen Position eine Linie zu jedem Punkt, der die Antwort
+entscheidet — läuft hier ins Leere: eine Linie zum Flächenschwerpunkt sagt nichts. An ihre
+Stelle tritt die eigene Fläche, gestrichelt in der Akzentfarbe umrandet und benannt,
+während die des Fragenden neutral gefüllt bleibt. Ist es dieselbe, liegt ein Umriss auf dem
+anderen. Die Border-Karte behält dagegen die Linie: dort gibt es den entscheidenden Punkt,
+nämlich den nächsten auf der Grenze der eigenen Fläche.
+
+Weil die Flächen einer Ebene lückenlos kacheln, ist die nächste Grenze der eigenen Fläche
+zugleich die nächste Grenze überhaupt — es muss keine zweite Fläche geprüft werden.
+
+**Im Client bleibt es bei Handarbeit** (§1): `containsPoint` als Strahlenschnitt mit
+Löchern, `nearestPointOnRings` als Punkt-zu-Strecke in einer flachen Ebene um den
+Fragepunkt. Turf läuft weiterhin nur im Build. Das Link-Schema bleibt unverändert: `q`
+trägt die Frage-ID, die Ebene kommt beim Empfänger aus `questions.json`.
+
 ### V3 — Flüche
 - Fluch-Katalog aus JSON, aktive Flüche mit Timer
 - Freies Radien-Zeichenwerkzeug auf der Karte
-- Verwaltungsgrenzen und Küstenlinie als Polygone — schaltet die restlichen
-  Matching-/Measuring-Karten frei
+- Küstenlinie und Gewässer als Geometrie — schaltet die letzten Measuring-Karten frei
+  (die Verwaltungsgrenzen sind mit V6 erledigt)
 
 ---
 
@@ -250,11 +325,18 @@ Zwei Filter sind entscheidend: `zoo=petting_zoo` fliegt raus (163 von 193 „Zoo
 niederländische Kinderbauernhöfe), und als Flughafen zählt nur, was einen IATA-Code hat
 (ein ICAO-Code reicht nicht, den hat auch ein Segelflugplatz).
 
+### `divisions/<ebene>.json`
+Die vier Verwaltungsebenen, je eine Datei: `corop`, `gemeente`, `wijk`, `buurt`. Je Fläche
+nur `code`, `name` und die Geometrie; erzeugt von `scripts/fetch-divisions.mjs` aus den CBS
+Gebiedsindelingen (s. V6). **Als einzige Laufzeitdaten nicht beim Start geladen**, sondern
+erst, wenn eine Frage die Ebene braucht — zusammen wiegen sie mehr als alles andere.
+
 ### `questions.json`
 Erzeugt von `scripts/build-questions.mjs` aus `jetlag_questions_medium.json`: stabile ID
-je Frage (damit Häkchen einen Neustart überstehen), Visualisierungstyp, POI-Bezug. Das
-Skript liest `poi.json` und markiert Fragen automatisch als **schwach**, wenn die Daten
-sie entwerten — bei nur einem Flughafen ist „gleicher nächster Flughafen?" immer „ja".
+je Frage (damit Häkchen einen Neustart überstehen), Visualisierungstyp, POI- oder
+Ebenenbezug. Das Skript liest `poi.json`, `stations.json` und die Ebenen und markiert
+Fragen automatisch als **schwach**, wenn die Daten sie entwerten — bei zweitausend Buurten
+im Spielgebiet ist „gleiche Buurt?" fast immer „nein".
 
 ---
 
@@ -262,9 +344,12 @@ sie entwerten — bei nur einem Flughafen ist „gleicher nächster Flughafen?" 
 
 ```
 public/data/          stations.json · area.geojson · config.json   ← zur Laufzeit geladen
+public/data/divisions/ corop · gemeente · wijk · buurt             ← erst bei Bedarf
 scripts/
   import-stations.mjs data/artt_verstecke.geojson → stations.json
-  fetch-pois.mjs      Overpass → poi.json (V3)
+  fetch-pois.mjs      Overpass → poi.json
+  fetch-divisions.mjs PDOK-WFS → divisions/*.json
+  lib/region.mjs      die Rahmen, in denen beide beschaffen
 src/
   components/
     GameMap.vue           Karten-Host, besitzt die Leaflet-Instanz
@@ -275,7 +360,7 @@ src/
     StationDetail.vue
     LayerControls.vue     Filter nach Verkehrsmittel
   composables/
-    usePreviewLayers.ts   Geometrie der gerade gezeigten Frage
+    usePreviewLayers.ts   Geometrie der gerade gezeigten Frage, Orte wie Flächen
     useLeafletMap.ts      Leaflet direkt kapseln
     useGeolocation.ts     watchPosition + Permission-Handling
     useGameData.ts        JSON laden, validieren, cachen
@@ -362,6 +447,10 @@ für kleine Displays vorgesehene Form.
 
 ## 6. Datenbeschaffung
 
+Die Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs`: der
+weite (Spielgebiet plus rund 20 km) für alles, wonach „am nächsten" gefragt wird, und ein
+enger (plus rund 5 km) für die feinen Ebenen, bei denen nur „dieselbe wie meine?" zählt.
+
 Quelle ist `data/artt_verstecke.geojson`: die von Hand kuratierte Liste aller Halte im
 Geltungsbereich des Tickets — Bahn, Metro und Fähre vollständig, Bus und Tram auf 650 m
 Abstand ausgedünnt, je Halt die bedienenden Linien, dazu `in_artt` (im Ticket) und
@@ -399,14 +488,15 @@ Alkmaar. Wer einen Halt ganz ausschliessen will, setzt `ticketValid: false` in
 
 ## 8. Status
 
-V1, V2, V4 und V5 sind umgesetzt und headless gegen den echten Datenstand gegengeprüft:
+V1, V2, V4, V5 und V6 sind umgesetzt und headless gegen den echten Datenstand gegengeprüft:
 Kartenvorschau je Frage-Typ (Orte, hervorgehobener nächster, Linie samt Entfernung) sowie
 der Link-Rundlauf über Sende- und Empfangsweg im DOM.
 
 - 459 Halte (63 Bahn, 29 Metro, 52 Tram, 300 Bus, 15 Fähre), davon 16 nur gegen Aufpreis;
   alle liegen im Spielgebiet
-- 2006 Orte in 11 Kategorien
-- 69 Fragekarten, 35 davon auf der Karte zeichenbar, 3 automatisch als schwach erkannt
+- 2212 Orte in 11 Kategorien
+- 4838 Verwaltungsflächen in 4 Ebenen (17 COROP, 115 Gemeenten, 834 Wijken, 3872 Buurten)
+- 69 Fragekarten, 41 davon auf der Karte zeichenbar, 4 automatisch als schwach erkannt
 
 ### Beim Bauen aufgefallen
 
@@ -444,6 +534,13 @@ der Link-Rundlauf über Sende- und Empfangsweg im DOM.
   Einpassen zog die Karte den Ausschnitt auf die 3 km des Reglers statt auf den
   nächstgelegenen Ort — beim Zeichnen fiel es nicht auf, weil Matching und Measuring
   keinen Radius benutzen.
+- Der Beschaffungsrahmen endete im Osten bei 5,35°, das Spielgebiet reicht aber bis
+  Lelystad (5,50°). Für Halte im Osten war „dein nächstes Museum" damit schlicht falsch —
+  aufgefallen erst, als die Verwaltungsebenen denselben Rahmen benutzen sollten. Beide
+  Rahmen stehen jetzt gemeinsam in `scripts/lib/region.mjs`.
+- Nachbarumrisse bei Strichstärke 1 und 55 % Deckkraft sind auf der Grundkarte nicht zu
+  sehen: zwischen Autobahnen, Kanälen und Bebauungsgrenzen geht eine Haarlinie unter. Erst
+  Stärke 2 bei 85 % trennt sie davon ab. Am Bildschirm nachgemessen, nicht geschätzt.
 - `watchPosition` liefert im Sekundentakt. Solange eine erhaltene Frage offen ist, hängt
   daran ein Neuzeichnen — bei Matching und Measuring bis zu 60 Marker. Unter 20 m Bewegung
   wird deshalb nicht neu gezeichnet; das ist feiner, als die Entfernungsangabe auflöst.

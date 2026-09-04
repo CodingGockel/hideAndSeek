@@ -2,6 +2,7 @@ import { watch, type Ref } from 'vue'
 import L from 'leaflet'
 import { useGameStore } from '../stores/game'
 import type { AppConfig, Station, TransportMode } from '../types/game'
+import { toLatLngRings } from '../lib/geo'
 import { SHEET_HALF_RATIO } from '../lib/layout'
 import { cssColor, resolvedTheme } from '../lib/theme'
 
@@ -61,19 +62,6 @@ function secondaryMode(station: Station): TransportMode | null {
 
 function colorFor(station: Station, config: AppConfig): string {
   return config.modes[station.mode]?.color ?? '#475569'
-}
-
-/** GeoJSON ist [lon, lat], Leaflet will [lat, lon]. */
-function toLatLngRings(geometry: GeoJSON.Geometry): L.LatLngExpression[][] {
-  if (geometry.type === 'Polygon') {
-    return geometry.coordinates.map((ring) => ring.map(([lon, lat]) => [lat, lon]))
-  }
-  if (geometry.type === 'MultiPolygon') {
-    return geometry.coordinates.flatMap((poly) =>
-      poly.map((ring) => ring.map(([lon, lat]) => [lat, lon] as L.LatLngExpression)),
-    )
-  }
-  return []
 }
 
 export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas | null>) {

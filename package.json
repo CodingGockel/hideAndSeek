@@ -10,8 +10,9 @@
     "data:stations": "node scripts/import-stations.mjs",
     "data:area": "node scripts/build-area.mjs",
     "data:pois": "node scripts/fetch-pois.mjs",
+    "data:divisions": "node scripts/fetch-divisions.mjs",
     "data:questions": "node scripts/build-questions.mjs",
-    "data": "npm run data:stations && npm run data:area && npm run data:pois && npm run data:questions"
+    "data": "npm run data:stations && npm run data:area && npm run data:pois && npm run data:divisions && npm run data:questions"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -22,6 +23,7 @@
     "@turf/buffer": "^7.4.0",
     "@turf/convex": "^7.4.0",
     "@turf/helpers": "^7.4.0",
+    "@turf/simplify": "^7.4.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
