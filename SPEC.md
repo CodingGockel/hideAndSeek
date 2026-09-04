@@ -338,11 +338,17 @@ der die Quelle echte Kacheln liefert (`maxNativeZoom`) — darüber skaliert Lea
 statt graue Flächen zu zeigen.
 
 ### `poi.json`
-Rund 2000 Orte in 11 Kategorien (Museum, Bibliothek, Kino, Krankenhaus, Park, Zoo,
+Rund 2350 Orte in 11 Kategorien (Museum, Bibliothek, Kino, Krankenhaus, Park, Zoo,
 Golfplatz, Freizeitpark, Konsulat, Flughafen, Aquarium), erzeugt von
 `scripts/fetch-pois.mjs`. Rahmen bewusst grösser als das Spielgebiet, sonst bekämen
-Randstationen ein falsches „nächstes Museum". Kompakt geschrieben (225 kB, 49 kB gzip) —
+Randstationen ein falsches „nächstes Museum". Kompakt geschrieben (260 kB, 57 kB gzip) —
 die Datei wird nie von Hand bearbeitet.
+
+Die Kategorien stehen in zwei Rahmen (s. V6), was in der Datei unter `frames` und je
+Kategorie als `scope` steht: die dichten im 25-km-Ring, die fünf seltenen (Aquarium,
+Flughafen, Zoo, Freizeitpark, Konsulat) in 100 km. Am Ende jedes Laufs rechnet das Skript
+für alle 459 Halte nach, dass der nächste Ort jeder Kategorie näher liegt als ihr Offset,
+und bricht sonst ab — die Datei wäre dann still falsch.
 
 Zwei Filter sind entscheidend: `zoo=petting_zoo` fliegt raus (163 von 193 „Zoos" sind
 niederländische Kinderbauernhöfe), und als Flughafen zählt nur, was einen IATA-Code hat
@@ -491,9 +497,23 @@ für kleine Displays vorgesehene Form.
 
 ## 6. Datenbeschaffung
 
-Die Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs`: der
-weite (Spielgebiet plus rund 20 km) für alles, wonach „am nächsten" gefragt wird, und ein
-enger (plus rund 5 km) für die feinen Ebenen, bei denen nur „dieselbe wie meine?" zählt.
+Die Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs` und
+werden dort aus `area.geojson` gepuffert, nicht von Hand gesetzt — sonst laufen sie der
+Zone hinterher, sobald sich die Stationsliste ändert. Es sind drei:
+
+| Rahmen | Offset | wofür |
+|---|---|---|
+| `BBOX` (nah) | Zone + 25 km | alles Dichte, wonach „am nächsten" gefragt wird; COROP- und Gemeentegrenzen |
+| `FAR_BBOX` | Zone + 100 km | Aquarium, Flughafen, Zoo, Freizeitpark, Konsulat |
+| `INNER_BBOX` | Zone + 5 km | Wijk und Buurt, wo nur „dieselbe wie meine?" zählt |
+
+Wie weit ein Rahmen reichen muss, entscheidet nicht das Gebiet, sondern die Dichte der
+Kategorie: der weiteste „nächste" ist bei Kino 11,4 km, bei Aquarium 59,5 km. Deshalb der
+zweite, weite Rahmen für die fünf seltenen Kategorien — es sind zusammen rund 370
+Datensätze, er kostet also fast nichts. Beim nahen Rahmen ist zusätzlich der *Ring* um das
+Gebiet massgeblich, nicht das Rechteck: `fetch-pois.mjs` wirft nach der Abfrage weg, was
+nur in dessen Ecken liegt (Rotterdam, Den Haag). Das hält die Datei klein, obwohl der
+Abstand ringsum gleichmässig 25 km beträgt.
 
 Quelle ist `data/artt_verstecke.geojson`: die von Hand kuratierte Liste aller Halte im
 Geltungsbereich des Tickets — Bahn, Metro und Fähre vollständig, Bus und Tram auf 650 m
@@ -589,6 +609,15 @@ der Link-Rundlauf über Sende- und Empfangsweg im DOM.
   Lelystad (5,50°). Für Halte im Osten war „dein nächstes Museum" damit schlicht falsch —
   aufgefallen erst, als die Verwaltungsebenen denselben Rahmen benutzen sollten. Beide
   Rahmen stehen jetzt gemeinsam in `scripts/lib/region.mjs`.
+- Derselbe Fehler noch zweimal, nachdem die Ostkante geflickt war. Erstens war das von
+  Hand nachgezogene Rechteck ringsum unterschiedlich weit — Süd 6,7 km, Nord 10,8 km, West
+  17,2 km, Ost 19,6 km, bei einem Kommentar, der „plus rund 20 km" behauptete. Es wird
+  jetzt aus `area.geojson` gepuffert und kann gar nicht mehr auseinanderlaufen. Zweitens
+  hilft ein gleichmässiger Offset den seltenen Kategorien nicht: für 269 von 459 Halten lag
+  das nächste Aquarium weiter weg als der Rand, für 39 der nächste Flughafen. Die Weite
+  muss an der Dichte hängen, nicht am Gebiet. Beides fiel nur auf, weil nachgerechnet
+  wurde; auf der Karte sieht eine falsche Antwort genauso plausibel aus wie eine richtige,
+  und deshalb rechnet `fetch-pois.mjs` das jetzt bei jedem Lauf selbst nach.
 - Nachbarumrisse bei Strichstärke 1 und 55 % Deckkraft sind auf der Grundkarte nicht zu
   sehen: zwischen Autobahnen, Kanälen und Bebauungsgrenzen geht eine Haarlinie unter. Erst
   Stärke 2 bei 85 % trennt sie davon ab. Am Bildschirm nachgemessen, nicht geschätzt.

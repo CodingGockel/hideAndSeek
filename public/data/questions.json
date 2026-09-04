@@ -25,7 +25,7 @@
           "label": "Commercial Airport",
           "viz": "poi-nearest",
           "poiCategory": "airport",
-          "weak": "nur 2 in der Region — Antwort ist fast immer „ja\""
+          "weak": null
         },
         {
           "id": "matching:transit-line",
@@ -82,7 +82,7 @@
           "poiCategory": null,
           "divisionLevel": "buurt",
           "divisionLabel": "Buurt",
-          "weak": "2209 im Spielgebiet — Antwort ist fast immer „nein\""
+          "weak": null
         },
         {
           "id": "matching:mountain",
@@ -103,7 +103,7 @@
           "label": "Park",
           "viz": "poi-nearest",
           "poiCategory": "park",
-          "weak": "1122 in der Region — Antwort ist fast immer „nein\""
+          "weak": null
         },
         {
           "id": "matching:amusement-park",
@@ -124,7 +124,7 @@
           "label": "Aquarium",
           "viz": "poi-nearest",
           "poiCategory": "aquarium",
-          "weak": "nur 2 in der Region — Antwort ist fast immer „ja\""
+          "weak": null
         },
         {
           "id": "matching:golf-course",

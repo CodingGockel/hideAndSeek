@@ -190,16 +190,12 @@ function weaknessOf(viz, poiCategory, divisionLevel) {
     // Nur die Matching-Karte lebt von der Identität der Fläche. „Wie weit ist die
     // nächste Grenze?" sagt auch bei tausend Buurten etwas aus.
     if (viz !== 'division') return null
-    if (count < 3) return `nur ${count} im Spielgebiet — Antwort ist fast immer „ja"`
-    if (count > 500) return `${count} im Spielgebiet — Antwort ist fast immer „nein"`
     return null
   }
   if (!poiCategory) return null
   const count = poiCounts[poiCategory] ?? 0
   if (count === 0) return 'keine Daten in der Region'
   if (viz === 'poi-nearest') {
-    if (count < 3) return `nur ${count} in der Region — Antwort ist fast immer „ja"`
-    if (count > 500) return `${count} in der Region — Antwort ist fast immer „nein"`
   }
   if (viz === 'poi-within' && count < 3) return `nur ${count} in der Region`
   return null

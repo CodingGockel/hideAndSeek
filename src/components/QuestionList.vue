@@ -115,7 +115,6 @@ function onShare(question: Question) {
 
             <span class="label">
               {{ question.label }}
-              <span v-if="question.weak" class="weak" :title="question.weak">schwach</span>
             </span>
 
             <button

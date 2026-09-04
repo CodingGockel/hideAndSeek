@@ -159,7 +159,9 @@ richtigen Reihenfolge).
 
 Die Verwaltungsflächen kommen von den **CBS Gebiedsindelingen** über den PDOK-WFS
 (CC BY 4.0) — eine Adresse für alle vier Ebenen, amtlich und als fertiges GeoJSON. Die
-Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs`.
+Rahmen, in denen beschafft wird, stehen gemeinsam in `scripts/lib/region.mjs` und werden
+dort aus `public/data/area.geojson` gepuffert — `data:area` muss also vor `data:pois` und
+`data:divisions` gelaufen sein.
 
 Die Landesgrenze kommt aus OpenStreetMap. Der Kniff steckt in der Abfrage: ein Weg, der
 zugleich zur Grenzrelation der Niederlande *und* zu der eines Nachbarlands gehört, liegt

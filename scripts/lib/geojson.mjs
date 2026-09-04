@@ -39,3 +39,56 @@ export function thin(geometry, toleranceMeters) {
   )
   return { type: simplified.geometry.type, coordinates: roundCoords(simplified.geometry.coordinates) }
 }
+
+/**
+ * Umschliessendes Rechteck einer Geometrie als [S, W, N, O] — die Reihenfolge, die
+ * Overpass und der PDOK-WFS erwarten, nicht die von GeoJSON.
+ */
+export function bboxOf(geometry) {
+  let s = Infinity
+  let w = Infinity
+  let n = -Infinity
+  let o = -Infinity
+  const walk = (coords) => {
+    if (typeof coords[0] === 'number') {
+      const [lon, lat] = coords
+      if (lat < s) s = lat
+      if (lat > n) n = lat
+      if (lon < w) w = lon
+      if (lon > o) o = lon
+      return
+    }
+    coords.forEach(walk)
+  }
+  walk(geometry.coordinates)
+  return [s, w, n, o]
+}
+
+/**
+ * Liegt der Punkt in der Fläche? Strahlverfahren, Löcher zählen als aussen.
+ *
+ * Dasselbe steht als `containsPoint` in src/lib/geo.ts. Das ist TypeScript und aus einem
+ * Skript nicht zu importieren; die zwanzig Zeilen zu spiegeln ist billiger als eine
+ * Abhängigkeit für sie.
+ */
+export function containsPoint(geometry, lon, lat) {
+  const polygons =
+    geometry.type === 'MultiPolygon' ? geometry.coordinates : [geometry.coordinates]
+  return polygons.some((rings) => {
+    // Der erste Ring ist die Aussenkante, alle weiteren sind Löcher.
+    if (!inRing(rings[0], lon, lat)) return false
+    return !rings.slice(1).some((hole) => inRing(hole, lon, lat))
+  })
+}
+
+function inRing(ring, lon, lat) {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
+}

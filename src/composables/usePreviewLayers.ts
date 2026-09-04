@@ -33,13 +33,6 @@ import type { BorderSegment, DivisionArea, LatLon, MapPreview } from '../types/g
 const ANCHOR_PANE = 'preview-anchor'
 
 /**
- * Wie viele Orte einer Kategorie höchstens einzeln gezeigt werden. „Park" hat über
- * tausend Einträge in der Region — als Marker wäre das eine unlesbare Fläche, und
- * für die Frage zählt ohnehin nur die nähere Umgebung.
- */
-const MAX_POI_MARKERS = 60
-
-/**
  * Wie viele Nachbarflächen einer Ebene höchstens umrissen werden. Auf Buurt-Ebene
  * liegen im Spielgebiet fast viertausend — gezeichnet wäre das ein Filz, in dem die
  * eigene Fläche untergeht, und für die Frage zählt ohnehin nur die Umgebung.
@@ -282,12 +275,10 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     const closest = nearest(preview.origin, pois)
     if (!closest) return
 
-    // Nach Entfernung sortiert kappen: was weit weg liegt, sagt zu dieser Frage nichts.
-    const shown = [...pois]
-      .sort((a, b) => distanceMeters(preview.origin, a) - distanceMeters(preview.origin, b))
-      .slice(0, MAX_POI_MARKERS)
-
-    for (const poi of shown) {
+    // Alle Orte der Kategorie, ungekappt. Bei „Park" sind das über tausend Marker; das ist
+    // dicht, aber gewollt — wer die Frage stellt, will sehen, wo überall welche liegen,
+    // und nicht raten, ob hinter dem Rand des Ausschnitts noch einer steht.
+    for (const poi of pois) {
       if (poi === closest.item) continue
       layers.push(poiMarker(poi, false))
     }
@@ -548,8 +539,7 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
     if (!mine) return
 
     // Der nächste Ort des Fragenden ist schon hervorgehoben; ist es derselbe, reicht ein
-    // Marker — die zwei Linien darauf sind die Aussage. Meiner kann ausserhalb der
-    // gezeigten MAX_POI_MARKERS liegen, deshalb explizit.
+    // Marker — die zwei Linien darauf sind die Aussage.
     const alreadyShown = nearest(preview.origin, candidates)?.item ?? null
     if (mine.item !== alreadyShown) layers.push(poiMarker(mine.item, true))
 
