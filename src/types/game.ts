@@ -34,8 +34,8 @@ export interface Basemap {
   attribution: string
   maxZoom: number
   /**
-   * Luftbild o.ä. — solche Kacheln dürfen im Dark Mode nicht invertiert werden,
-   * sonst wird aus dem Foto ein Negativ.
+   * Luftbild o.ä. — solche Kacheln bleiben vom Entsättigungsfilter ausgenommen, der
+   * die gezeichneten Karten hinter den Markern zurücktreten lässt.
    */
   photo: boolean
 }

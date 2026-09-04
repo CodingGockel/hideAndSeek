@@ -13,7 +13,6 @@ import IncomingQuestion from './components/IncomingQuestion.vue'
 import SeekerPosition from './components/SeekerPosition.vue'
 import { parseAskHash } from './lib/share'
 import { POI_GLYPHS, POI_FALLBACK_GLYPH } from './lib/poiPin'
-import { applyTheme, resolvedTheme } from './lib/theme'
 import type { LatLon, Question, TransportMode } from './types/game'
 
 const store = useGameStore()
@@ -193,25 +192,6 @@ function onSelectPoi(id: string) {
   store.select(null)
   questions.selectPoi(id)
   mapRef.value?.focusPoi(id)
-}
-
-/**
- * Hell und dunkel.
- *
- * Ohne eigene Wahl folgt die App dem Gerät; der erste Druck kippt sie auf das Gegenteil
- * dessen, was gerade zu sehen ist, und legt sie damit fest. Die Beschriftung nennt das
- * Ziel des nächsten Drucks, nicht den aktuellen Zustand.
- */
-watch(() => store.theme, applyTheme, { immediate: true })
-
-const theme = computed(() =>
-  resolvedTheme.value === 'dark'
-    ? { label: 'Hell', hint: 'Zu heller Ansicht wechseln' }
-    : { label: 'Dunkel', hint: 'Zu dunkler Ansicht wechseln' },
-)
-
-function toggleTheme() {
-  store.theme = resolvedTheme.value === 'dark' ? 'light' : 'dark'
 }
 
 /**
@@ -424,16 +404,6 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
           >
             Alle Radien
           </button>
-
-          <button
-            type="button"
-            class="fab"
-            :title="theme.hint"
-            :aria-label="theme.hint"
-            @click="toggleTheme"
-          >
-            {{ theme.label }}
-          </button>
         </div>
 
         <!-- Der Pfeil ist das letzte Kind der rechtsbündigen Zeile und bleibt deshalb
@@ -545,7 +515,6 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
   cursor: pointer;
 }
 
-/* --on-accent statt Weiss: im Dark Mode sind --ok und --bad helle Töne. */
 .locate.ok {
   background: var(--ok);
   border-color: var(--ok);

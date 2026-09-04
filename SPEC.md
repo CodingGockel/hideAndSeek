@@ -425,7 +425,7 @@ DOM-Marker-Rendering beim Zoomen spürbar ruckelig, Canvas nicht.
 │                      +/− │
 │         KARTE            │  Vollbild, Spielgebiet abgesetzt
 │                          │
-│           [Standard]  ‹  │  Karte · Standort setzen · Sucher · Alle Radien · Hell/Dunkel
+│           [Standard]  ‹  │  Karte · Standort setzen · Sucher · Alle Radien
 ├──────────────────────────┤
 │ ══ Bottom Sheet ══       │  peek: „12 Haltestellen in der Nähe"
 │ Haltestellen · Filter    │  halb: Liste  ·  voll: Detail
@@ -450,10 +450,10 @@ Harte Regeln, weil das Ding im Zug mit einer Hand bedient wird:
 - `100dvh` statt `100vh`, plus `env(safe-area-inset-*)` — sonst verdeckt die iOS-Leiste die Controls
 - Touch-Targets ≥ 44 px, Fließtext ≥ 14 px
 - Alle primären Aktionen im unteren Bildschirmdrittel (Daumenzone)
-- Dark Mode über `prefers-color-scheme`, Basiskarte passend gewechselt; ein Knopf in der
-  rechten Leiste überstimmt das Gerät (`data-theme` auf `<html>`, gemerkt wie die übrigen
-  Einstellungen). Die Karten-Overlays holen ihre Farben aus dem CSS und zeichnen nach
-  jedem Wechsel neu — egal ob Gerät oder Knopf ihn ausgelöst hat
+- Eine Palette, hell, auch auf einem Gerät im Dunkelmodus (`color-scheme: light`): gespielt
+  wird tagsüber draussen, und dort ist die helle Karte die lesbare. Die Karten-Overlays
+  holen ihre Farben trotzdem aus dem CSS (`cssColor` in `lib/theme.ts`), weil Leaflet
+  konkrete Werte braucht und sie nur an einer Stelle stehen sollen
 - `watchPosition` mit `enableHighAccuracy`, aber pausieren, wenn die Seite im Hintergrund ist (Akku)
 
 **Basiskarten:** drei zur Auswahl, alle ohne API-Key, konfiguriert in `config.json`:
@@ -480,10 +480,10 @@ oberhalb der Quellgrenze nichts als Grau.
 CARTO Positron wäre optisch die bessere Grundkarte, verlangt aber inzwischen einen
 API-Key — die Kacheln kommen sonst mit „API KEY REQUIRED" quer über der Karte.
 
-Die Anpassung an das Farbschema macht ein CSS-Filter: leichte Entsättigung im Hellen,
-Invertierung plus Farbkreisdrehung im Dunklen. Der Filter sitzt auf dem Layer-Container,
-nicht auf der Tile-Pane — nur so bleiben Marker und Radien unberührt **und** lassen sich
-Luftbilder ausnehmen, aus denen die Invertierung sonst ein Negativ machen würde.
+Gezeichnete Karten sind für eine Spielkarte zu bunt; ein CSS-Filter entsättigt sie leicht,
+damit die Marker davor klarer hervortreten. Der Filter sitzt auf dem Layer-Container, nicht
+auf der Tile-Pane — nur so bleiben Marker und Radien unberührt **und** lassen sich
+Luftbilder über `photo: true` ausnehmen.
 
 **Haltestellenmarker:** Piktogramm des Verkehrsmittels (Zug, „M" für Metro, Tram, Bus,
 Fähre) in Weiss auf der Modusfarbe. Umsteigeknoten tragen einen zweiten Ring in der Farbe

@@ -9,7 +9,6 @@ import type {
   TransportMode,
 } from '../types/game'
 import { distanceMeters } from '../lib/geo'
-import type { Theme } from '../lib/theme'
 
 const BASE = import.meta.env.BASE_URL
 const PREFS_KEY = 'hs.prefs.v2'
@@ -29,8 +28,6 @@ interface Prefs {
   poiMenuOpen: boolean
   /** Ortskategorien, die dauerhaft auf der Karte liegen. */
   activePoiCategories: string[]
-  /** Von Hand gewählte Ansicht; `null` folgt der Einstellung des Geräts. */
-  theme: Theme | null
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -44,7 +41,6 @@ const DEFAULT_PREFS: Prefs = {
   poiMenuOpen: false,
   // Leer: über zweitausend Orte beim ersten Start wären eine Wand aus Piktogrammen.
   activePoiCategories: [],
-  theme: null,
 }
 
 function loadPrefs(): Prefs {
@@ -85,8 +81,6 @@ export const useGameStore = defineStore('game', () => {
    * zeichnet ihre Kategorie immer, auch wenn sie hier nicht angehakt ist.
    */
   const activePoiCategories = ref<Set<string>>(new Set(prefs.activePoiCategories))
-  /** Von Hand gewählte Ansicht. `null` heisst: der Knopf wurde noch nie gedrückt. */
-  const theme = ref<Theme | null>(prefs.theme)
   const basemapId = ref<string | null>(prefs.basemapId)
   const senderName = ref(prefs.senderName)
 
@@ -132,7 +126,6 @@ export const useGameStore = defineStore('game', () => {
       toolsOpen,
       poiMenuOpen,
       activePoiCategories,
-      theme,
     ],
     () => {
       try {
@@ -148,7 +141,6 @@ export const useGameStore = defineStore('game', () => {
             toolsOpen: toolsOpen.value,
             poiMenuOpen: poiMenuOpen.value,
             activePoiCategories: [...activePoiCategories.value],
-            theme: theme.value,
           } satisfies Prefs),
         )
       } catch {
@@ -332,7 +324,6 @@ export const useGameStore = defineStore('game', () => {
     toolsOpen,
     poiMenuOpen,
     activePoiCategories,
-    theme,
     basemapId,
     senderName,
     basemaps,

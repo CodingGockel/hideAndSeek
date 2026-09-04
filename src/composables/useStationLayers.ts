@@ -4,7 +4,7 @@ import { useGameStore } from '../stores/game'
 import type { AppConfig, Station, TransportMode } from '../types/game'
 import { toLatLngRings } from '../lib/geo'
 import { SHEET_HALF_RATIO } from '../lib/layout'
-import { cssColor, resolvedTheme } from '../lib/theme'
+import { cssColor } from '../lib/theme'
 
 /**
  * Ganze Welt als äusserer Ring — mit dem Spielgebiet als Loch ergibt das die
@@ -356,12 +356,6 @@ export function useStationLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   watch(() => store.seekerPosition, drawSeeker, { deep: true })
 
   // Wechselt die Ansicht zwischen hell und dunkel, gelten andere Overlay-Farben.
-  // `resolvedTheme` deckt beide Auslöser ab: die Einstellung des Geräts und den Knopf.
-  watch(resolvedTheme, () => {
-    drawArea()
-    drawRadii()
-    drawSeeker()
-  })
 
   /** Erstzeichnung, sobald die Karte existiert. */
   function bind() {

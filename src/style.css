@@ -7,7 +7,7 @@
   --text-muted: #64748b;
   --accent: #2563eb;
   --accent-soft: #eff6ff;
-  /* Textfarbe auf Akzentflächen — im Dark Mode ist der Akzent zu hell für Weiss. */
+  /* Textfarbe auf Akzentflächen. */
   --on-accent: #ffffff;
   --ok: #15803d;
   --ok-soft: #dcfce7;
@@ -19,72 +19,13 @@
   --area-outside: rgb(15 23 42 / 0.3);
   --area-border: #dc2626;
   --radius-all: rgb(14 165 233 / 0.1);
-  /* Vorschau einer noch unbeantworteten Frage — muss auf beiden Kartenhelligkeiten
-     sofort ins Auge fallen, ohne wie eine bestätigte Einschränkung auszusehen. */
+  /* Vorschau einer noch unbeantworteten Frage — muss sofort ins Auge fallen, ohne wie
+     eine bestätigte Einschränkung auszusehen. */
   --preview: #1e293b;
 
-  color-scheme: light dark;
-}
-
-/*
- * Dunkle Palette.
- *
- * Sie steht zweimal da, weil eine Regel nicht gleichzeitig innerhalb und ausserhalb einer
- * Media Query gelten kann: einmal für Geräte im Dunkelmodus (sofern der Knopf nicht auf
- * hell steht), einmal für die von Hand gewählte dunkle Ansicht. Das `data-theme` setzt
- * `applyTheme()` in `lib/theme.ts`; ohne Wahl fehlt das Attribut und es bleibt bei dem,
- * was das Gerät sagt.
- */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --surface: #1e293b;
-    --surface-sunken: #0f172a;
-    --border: #334155;
-    --border-strong: #475569;
-    --text: #e2e8f0;
-    --text-muted: #94a3b8;
-    --accent: #60a5fa;
-    --accent-soft: #1e3a5f;
-    --on-accent: #0f172a;
-    --ok: #4ade80;
-    --ok-soft: #14532d;
-    --bad: #f87171;
-    --bad-soft: #7f1d1d;
-
-    /* Auf der dunklen Karte trägt vor allem die Grenzlinie die Information, die
-       Abdunkelung aussen herum muss dafür kräftiger ausfallen. */
-    --area-outside: rgb(0 0 0 / 0.5);
-    --area-border: #f87171;
-    --radius-all: rgb(56 189 248 / 0.16);
-    --preview: #e2e8f0;
-  }
-}
-
-:root[data-theme='dark'] {
-  --surface: #1e293b;
-  --surface-sunken: #0f172a;
-  --border: #334155;
-  --border-strong: #475569;
-  --text: #e2e8f0;
-  --text-muted: #94a3b8;
-  --accent: #60a5fa;
-  --accent-soft: #1e3a5f;
-  --on-accent: #0f172a;
-  --ok: #4ade80;
-  --ok-soft: #14532d;
-  --bad: #f87171;
-  --bad-soft: #7f1d1d;
-
-  --area-outside: rgb(0 0 0 / 0.5);
-  --area-border: #f87171;
-  --radius-all: rgb(56 189 248 / 0.16);
-  --preview: #e2e8f0;
-
-  color-scheme: dark;
-}
-
-/* Damit auch Scrollbalken und Formularelemente der Wahl folgen und nicht dem Gerät. */
-:root[data-theme='light'] {
+  /* Die App ist hell, auch auf einem Gerät im Dunkelmodus: sie wird tagsüber draussen
+     benutzt, und dort ist die helle Karte die lesbare. Damit folgen auch Scrollbalken
+     und Formularelemente dem Hellen statt der Geräteeinstellung. */
   color-scheme: light;
 }
 
@@ -119,7 +60,7 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Leaflet bringt eigene Farben mit, die im Dark Mode als weisse Kästen stehen bleiben. */
+/* Leaflet bringt eigene Farben mit, die sonst als weisse Kästen stehen bleiben. */
 .leaflet-container {
   background: var(--surface-sunken);
   font: inherit;
@@ -131,20 +72,6 @@ button {
    davon ausnehmen. */
 .leaflet-tile-pane .basemap-drawn {
   filter: saturate(0.72) contrast(0.96);
-}
-
-/* Invertieren und den Farbkreis zurückdrehen macht aus der hellen Karte eine
-   dunkle, bei der Grün und Blau ihre Bedeutung behalten. Für Luftbilder wäre
-   das ein Negativ, deshalb greift es nur bei gezeichneten Karten.
-   Zweimal notiert wie die dunkle Palette oben — Gerät und Knopf. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .leaflet-tile-pane .basemap-drawn {
-    filter: invert(1) hue-rotate(180deg) saturate(0.6) brightness(0.92);
-  }
-}
-
-:root[data-theme='dark'] .leaflet-tile-pane .basemap-drawn {
-  filter: invert(1) hue-rotate(180deg) saturate(0.6) brightness(0.92);
 }
 
 /* Stationsmarker. Die Icons entstehen in Leaflet ausserhalb von Vue, deshalb

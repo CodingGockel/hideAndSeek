@@ -13,7 +13,7 @@ import { useGameStore } from '../stores/game'
 import { useQuestionStore } from '../stores/questions'
 import { poiPin } from '../lib/poiPin'
 import { SHEET_HALF_RATIO } from '../lib/layout'
-import { cssColor, resolvedTheme } from '../lib/theme'
+import { cssColor } from '../lib/theme'
 
 export function usePoiLayers(map: Ref<L.Map | null>) {
   const game = useGameStore()
@@ -66,8 +66,6 @@ export function usePoiLayers(map: Ref<L.Map | null>) {
     watch(() => questions.poisByCategory, draw)
     watch(previewCategory, draw)
     watch(() => questions.selectedPoiId, draw)
-    // Die Farbe kommt aus dem CSS und ändert sich mit der Ansicht.
-    watch(resolvedTheme, draw)
   }
 
   /**

@@ -223,7 +223,7 @@ src/lib/share.ts        Nachrichtentext, Link-Schema, deutsche Fragesätze
 
 `config.json` enthält den Versteck-Radius, den Kartenausschnitt, die Liste der Basiskarten
 und die Farben pro Verkehrsmittel — ebenfalls ohne Rebuild änderbar. Eine weitere Basiskarte
-ist ein Eintrag mehr in `basemaps`; `photo: true` nimmt sie vom Dark-Mode-Filter aus.
+ist ein Eintrag mehr in `basemaps`; `photo: true` nimmt sie vom Entsättigungsfilter aus.
 
 Die Karte zoomt bis Stufe 21. `maxZoom` je Basiskarte ist dabei die Stufe, bis zu der die
 Quelle echte Kacheln hat (OpenStreetMap 19, ÖPNVKarte 18, Esri-Luftbild 21); darüber

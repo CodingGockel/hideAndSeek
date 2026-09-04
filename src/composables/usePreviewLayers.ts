@@ -24,7 +24,7 @@ import {
 } from '../lib/geo'
 import { SHEET_HALF_RATIO } from '../lib/layout'
 import { poiPin } from '../lib/poiPin'
-import { cssColor, resolvedTheme } from '../lib/theme'
+import { cssColor } from '../lib/theme'
 import type { BorderSegment, DivisionArea, LatLon, MapPreview } from '../types/game'
 
 /**
@@ -535,7 +535,6 @@ export function usePreviewLayers(map: Ref<L.Map | null>, renderer: Ref<L.Canvas 
   })
 
   // Auch die Vorschau holt ihre Farben aus dem CSS — nach einem Wechsel neu zeichnen.
-  watch(resolvedTheme, draw)
 
   /**
    * Die Vergleichslinien einer erhaltenen Frage folgen dem GPS — aber nicht jedem Zucken.
