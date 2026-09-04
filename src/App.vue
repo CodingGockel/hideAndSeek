@@ -12,6 +12,7 @@ import ShareQuestion from './components/ShareQuestion.vue'
 import IncomingQuestion from './components/IncomingQuestion.vue'
 import SeekerPosition from './components/SeekerPosition.vue'
 import { parseAskHash } from './lib/share'
+import { POI_GLYPHS, POI_FALLBACK_GLYPH } from './lib/poiPin'
 import { applyTheme, resolvedTheme } from './lib/theme'
 import type { LatLon, Question, TransportMode } from './types/game'
 
@@ -98,6 +99,22 @@ const modes = computed(() =>
   (Object.keys(store.config?.modes ?? {}) as TransportMode[]).filter(
     (mode) => store.modeCounts[mode] > 0,
   ),
+)
+
+/**
+ * Die Ortskategorien für das Menü links, jede mit ihrer Anzahl.
+ *
+ * Wie bei den Verkehrsmitteln: was in den Daten nicht vorkommt, braucht auch keinen
+ * Schalter. Vor dem Laden von poi.json ist die Liste leer — dann bleibt das Menü ganz weg.
+ */
+const poiCategories = computed(() =>
+  questions.poiCategories
+    .map((category) => ({
+      ...category,
+      count: questions.poisByCategory.get(category.id)?.length ?? 0,
+      glyph: POI_GLYPHS[category.id] ?? POI_FALLBACK_GLYPH,
+    }))
+    .filter((category) => category.count > 0),
 )
 
 /**
@@ -283,6 +300,56 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
         Tippe auf die Karte, wo du stehst
         <button type="button" @click="store.placingPosition = false">Abbrechen</button>
       </p>
+
+      <!-- Orte-Menü links. Spiegelbild der Werkzeugleiste rechts: der Pfeil ist hier das
+           erste Kind und bleibt deshalb am linken Rand stehen, während die Liste nach
+           rechts weg wächst. -->
+      <div
+        v-if="poiCategories.length"
+        class="poi-tools"
+        :class="{ closed: !store.poiMenuOpen }"
+      >
+        <button
+          type="button"
+          class="fab toggle"
+          :aria-expanded="store.poiMenuOpen"
+          :aria-label="store.poiMenuOpen ? 'Orte-Menü einklappen' : 'Orte einblenden'"
+          @click="store.poiMenuOpen = !store.poiMenuOpen"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.25 4.5 15.75 12l-7.5 7.5" />
+          </svg>
+        </button>
+
+        <div class="poi-panel" role="group" aria-label="Orte einblenden">
+          <button
+            v-for="category in poiCategories"
+            :key="category.id"
+            type="button"
+            class="poi-item"
+            :class="{ on: store.activePoiCategories.has(category.id) }"
+            :aria-pressed="store.activePoiCategories.has(category.id)"
+            @click="store.togglePoiCategory(category.id)"
+          >
+            <svg class="poi-item-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path :d="category.glyph" />
+            </svg>
+            <span class="poi-item-label">{{ category.label }}</span>
+            <span class="count">{{ category.count }}</span>
+          </button>
+
+          <!-- Steht immer da, auch ohne Auswahl: käme der Knopf erst mit dem ersten
+               Häkchen dazu, würde die Liste unter dem Finger höher werden. -->
+          <button
+            type="button"
+            class="poi-item clear"
+            :disabled="!store.activePoiCategories.size"
+            @click="store.clearPoiCategories()"
+          >
+            Alle ausblenden
+          </button>
+        </div>
+      </div>
 
       <div class="tools" :class="{ closed: !store.toolsOpen }">
         <div class="fabs">
@@ -537,6 +604,30 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
   gap: 8px;
 }
 
+/*
+ * Die beiden Leisten liegen über der Karte, und `transform` verschiebt nur die
+ * Darstellung, nicht das Layout: eingeklappt steht der Inhalt weiterhin in voller Grösse
+ * im Container, nur woanders gezeichnet. Ein transparenter Container schluckt aber jeden
+ * Touch — auf dem Handy wäre damit ein grosser Teil der Karte weder zu ziehen noch
+ * anzutippen. Also nimmt der Container gar keine Ereignisse an; die Knöpfe holen sie sich
+ * einzeln zurück.
+ */
+.tools,
+.poi-tools {
+  pointer-events: none;
+}
+
+.tools > *,
+.poi-tools > * {
+  pointer-events: auto;
+}
+
+/* Eingeklappt ist der Inhalt zwar unsichtbar, sein Kasten steht aber noch im Layout. */
+.tools.closed .fabs,
+.poi-tools.closed .poi-panel {
+  pointer-events: none;
+}
+
 .fabs {
   display: flex;
   flex-direction: column;
@@ -562,6 +653,104 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
     visibility 0s 0.25s;
 }
 
+
+/* Spiegelbild von .tools: am linken Rand verankert, Pfeil zuerst, Liste danach. */
+.poi-tools {
+  position: absolute;
+  left: 12px;
+  bottom: 124px;
+  z-index: 550;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.poi-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgb(15 23 42 / 0.22);
+  /* Elf Kategorien sind höher als ein Handydisplay über dem Sheet hergibt. */
+  max-height: calc(100dvh - 260px);
+  overflow-y: auto;
+  transition:
+    transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.25s,
+    visibility 0s;
+}
+
+/* Nach links aus dem Bild schieben; `.stage` schneidet ab. `visibility` erst am Ende
+   der Fahrt, sonst bleibt die Liste eingeklappt anklickbar. */
+.poi-tools.closed .poi-panel {
+  transform: translateX(calc(-100% - 60px));
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 0.25s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.25s,
+    visibility 0s 0.25s;
+}
+
+/* Der Pfeil zeigt nach aussen, also in die Richtung, in die das Menü verschwindet —
+   spiegelbildlich zu dem rechts. */
+.poi-tools .toggle svg {
+  transform: rotate(180deg);
+}
+
+.poi-tools.closed .toggle svg {
+  transform: rotate(0deg);
+}
+
+.poi-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.poi-item.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.poi-item-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: currentColor;
+}
+
+.poi-item-label {
+  margin-right: auto;
+}
+
+/* Ohne eigenes Piktogramm: der Text rückt an die Stelle der anderen Beschriftungen. */
+.poi-item.clear {
+  padding-left: 34px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Ohne Auswahl gibt es nichts auszublenden. Der Knopf bleibt stehen, damit die Liste
+   ihre Höhe behält, nimmt sich aber sichtbar zurück. */
+.poi-item.clear:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
 .picker {
   display: flex;

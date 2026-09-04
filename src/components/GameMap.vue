@@ -4,12 +4,14 @@ import { useGameStore } from '../stores/game'
 import { useLeafletMap } from '../composables/useLeafletMap'
 import { useStationLayers } from '../composables/useStationLayers'
 import { usePreviewLayers } from '../composables/usePreviewLayers'
+import { usePoiLayers } from '../composables/usePoiLayers'
 
 const store = useGameStore()
 const container = ref<HTMLElement | null>(null)
 const { map, renderer, create, setBasemap } = useLeafletMap(container)
 const layers = useStationLayers(map, renderer)
 const preview = usePreviewLayers(map, renderer)
+const pois = usePoiLayers(map)
 
 let initialised = false
 
@@ -19,6 +21,8 @@ function init() {
   create(store.config)
   if (store.activeBasemap) setBasemap(store.activeBasemap, store.config)
   layers.bind()
+  // Vor der Vorschau: so liegt das Dauer-Overlay unter ihren Markern und Linien.
+  pois.bind()
   preview.bind()
 
   map.value?.on('click', (event) => {

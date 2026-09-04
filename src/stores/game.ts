@@ -25,6 +25,10 @@ interface Prefs {
   seekerPosition: LatLon | null
   /** Sind die Werkzeugknöpfe rechts ausgefahren? */
   toolsOpen: boolean
+  /** Ist das Orte-Menü links ausgefahren? */
+  poiMenuOpen: boolean
+  /** Ortskategorien, die dauerhaft auf der Karte liegen. */
+  activePoiCategories: string[]
   /** Von Hand gewählte Ansicht; `null` folgt der Einstellung des Geräts. */
   theme: Theme | null
 }
@@ -37,6 +41,9 @@ const DEFAULT_PREFS: Prefs = {
   senderName: '',
   seekerPosition: null,
   toolsOpen: true,
+  poiMenuOpen: false,
+  // Leer: über zweitausend Orte beim ersten Start wären eine Wand aus Piktogrammen.
+  activePoiCategories: [],
   theme: null,
 }
 
@@ -68,6 +75,16 @@ export const useGameStore = defineStore('game', () => {
   const showAllRadii = ref(prefs.showAllRadii)
   /** Ausgefahrene Werkzeugleiste rechts — eingeklappt gibt sie die Karte frei. */
   const toolsOpen = ref(prefs.toolsOpen)
+  /** Ausgefahrenes Orte-Menü links. */
+  const poiMenuOpen = ref(prefs.poiMenuOpen)
+  /**
+   * Ortskategorien, die unabhängig von einer Frage auf der Karte liegen.
+   *
+   * Dasselbe wie `activeModes` bei den Halten, nur für die Orte: eine reine
+   * Sichtbarkeitsfrage. Was eine Fragekarte zeigt, hängt nicht daran — die Vorschau
+   * zeichnet ihre Kategorie immer, auch wenn sie hier nicht angehakt ist.
+   */
+  const activePoiCategories = ref<Set<string>>(new Set(prefs.activePoiCategories))
   /** Von Hand gewählte Ansicht. `null` heisst: der Knopf wurde noch nie gedrückt. */
   const theme = ref<Theme | null>(prefs.theme)
   const basemapId = ref<string | null>(prefs.basemapId)
@@ -113,6 +130,8 @@ export const useGameStore = defineStore('game', () => {
       senderName,
       seekerPosition,
       toolsOpen,
+      poiMenuOpen,
+      activePoiCategories,
       theme,
     ],
     () => {
@@ -127,6 +146,8 @@ export const useGameStore = defineStore('game', () => {
             senderName: senderName.value,
             seekerPosition: seekerPosition.value,
             toolsOpen: toolsOpen.value,
+            poiMenuOpen: poiMenuOpen.value,
+            activePoiCategories: [...activePoiCategories.value],
             theme: theme.value,
           } satisfies Prefs),
         )
@@ -277,6 +298,17 @@ export const useGameStore = defineStore('game', () => {
     seekerPosition.value = null
   }
 
+  function togglePoiCategory(id: string) {
+    const next = new Set(activePoiCategories.value)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    activePoiCategories.value = next
+  }
+
+  function clearPoiCategories() {
+    activePoiCategories.value = new Set()
+  }
+
   function toggleMode(mode: TransportMode) {
     const next = new Set(activeModes.value)
     if (next.has(mode)) next.delete(mode)
@@ -298,6 +330,8 @@ export const useGameStore = defineStore('game', () => {
     activeModes,
     showAllRadii,
     toolsOpen,
+    poiMenuOpen,
+    activePoiCategories,
     theme,
     basemapId,
     senderName,
@@ -320,6 +354,8 @@ export const useGameStore = defineStore('game', () => {
     load,
     select,
     toggleMode,
+    togglePoiCategory,
+    clearPoiCategories,
     setManualPosition,
     clearManualPosition,
     setSeekerPosition,
