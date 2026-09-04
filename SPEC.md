@@ -332,7 +332,10 @@ Ein `Polygon`/`MultiPolygon` mit dem Spielgebiet. **Nur visuell** — normativ i
 Wird als weiches Overlay gezeichnet (Rest der Welt abgedunkelt), damit sofort klar ist, wo Schluss ist.
 
 ### `config.json`
-Startposition, Zoom-Grenzen, Versteck-Radius, die Liste der Basiskarten und die Farben pro `mode`.
+Startposition, Zoom-Grenzen, Versteck-Radius, die Liste der Basiskarten und die Farben pro
+`mode`. `map.maxZoom` ist die Grenze der Karte, `maxZoom` je Basiskarte die Stufe, bis zu
+der die Quelle echte Kacheln liefert (`maxNativeZoom`) — darüber skaliert Leaflet hoch,
+statt graue Flächen zu zeigen.
 
 ### `poi.json`
 Rund 2000 Orte in 11 Kategorien (Museum, Bibliothek, Kino, Krankenhaus, Park, Zoo,
@@ -455,6 +458,19 @@ Harte Regeln, weil das Ding im Zug mit einer Hand bedient wird:
 | ÖPNV | ÖPNVKarte (memomaps) | zeigt Linien und Netz — für ein Spiel über Nahverkehr das nützlichste Bild |
 | Satellit | Esri World Imagery | Gelände und Bebauung, um Verstecke einzuschätzen |
 
+**Zoom bis 21.** Wie weit eine Quelle wirklich reicht, steht nirgends dokumentiert — es
+wurde Kachel für Kachel abgefragt: OpenStreetMap liefert bis 19 und antwortet darüber mit
+HTTP 400, die ÖPNVKarte bis 18 (danach 404), Esri World Imagery bis **21**. Ab 22 gibt
+Esri viermal dieselbe 2521 Byte grosse Platzhalterkachel zurück — der Statuscode bleibt
+200, die Grenze ist also nur am Inhalt zu erkennen. Die z21-Abdeckung wurde an allen vier
+Ecken des Spielgebiets geprüft, nicht nur in Amsterdam.
+
+Die Karte geht deshalb bis 21, und nur der Satellit hat dort echte Bilddaten — knapp 7 cm
+je Pixel, genug für Dachaufbauten und einzelne Büsche. Die beiden gezeichneten Karten
+skalieren die letzten zwei bzw. drei Stufen hoch; „Spoor 10" und „Kiosk" bleiben dabei
+lesbar. Das ist der Zweck der Trennung von `maxZoom` und `maxNativeZoom`: ohne sie wäre
+oberhalb der Quellgrenze nichts als Grau.
+
 CARTO Positron wäre optisch die bessere Grundkarte, verlangt aber inzwischen einen
 API-Key — die Kacheln kommen sonst mit „API KEY REQUIRED" quer über der Karte.
 
@@ -551,6 +567,9 @@ der Link-Rundlauf über Sende- und Empfangsweg im DOM.
   „API KEY REQUIRED" über die Kacheln.
 - Beim Prüfen der Zoomstufe über die Kachel-URLs täuscht die erste Kachel im DOM: beim
   Zoomen bleiben alte stehen. Nur die höchste vorhandene Stufe ist die aktuelle.
+- Esri meldet oberhalb seiner Auflösungsgrenze keinen Fehler, sondern HTTP 200 mit einer
+  immer gleichen Platzhalterkachel. Wer die Grenze über den Statuscode sucht, findet sie
+  nicht — es braucht den Vergleich der Antwortgrössen benachbarter Kacheln.
 - Das Bottom Sheet liegt mit `z-index: 700` über allem. Ein Overlay, das aus ihm heraus
   aufgerufen wird, muss es einklappen — sonst erscheint es hinter der Liste, aus der man
   es gerade geöffnet hat.

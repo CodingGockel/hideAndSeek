@@ -223,5 +223,11 @@ src/lib/share.ts        Nachrichtentext, Link-Schema, deutsche Fragesätze
 und die Farben pro Verkehrsmittel — ebenfalls ohne Rebuild änderbar. Eine weitere Basiskarte
 ist ein Eintrag mehr in `basemaps`; `photo: true` nimmt sie vom Dark-Mode-Filter aus.
 
+Die Karte zoomt bis Stufe 21. `maxZoom` je Basiskarte ist dabei die Stufe, bis zu der die
+Quelle echte Kacheln hat (OpenStreetMap 19, ÖPNVKarte 18, Esri-Luftbild 21); darüber
+skaliert Leaflet hoch, statt graue Flächen zu zeigen. Wer eine Quelle austauscht, sollte
+deren Grenze nachmessen — die Anbieter dokumentieren sie nicht, und Esri antwortet
+oberhalb davon mit HTTP 200 und einer Platzhalterkachel statt mit einem Fehler.
+
 Karten von [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL), Stationsdaten
 ebenfalls aus OSM.

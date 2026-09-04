@@ -1,5 +1,0 @@
-Measuring
-„Golf Course" — bist du näher dran als ich oder weiter weg?
-Mein Standort: 52.47803, 4.66535
-https://www.google.com/maps?q=52.47803,4.66535
-In der App beantworten: http://localhost:5173/#v=1&q=measuring%3Agolf-course&o=52.47803%2C4.66535

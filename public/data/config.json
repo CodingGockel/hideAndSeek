@@ -6,7 +6,7 @@
       4.9005
     ],
     "zoom": 11,
-    "minZoom": 9,
+    "minZoom": 5,
     "maxZoom": 19
   },
   "basemaps": [
@@ -31,7 +31,7 @@
       "label": "Satellit",
       "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       "attribution": "Luftbilder &copy; Esri, Maxar, Earthstar Geographics",
-      "maxZoom": 19,
+      "maxZoom": 21,
       "photo": true
     }
   ],
