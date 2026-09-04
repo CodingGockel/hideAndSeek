@@ -12,6 +12,7 @@ import L from 'leaflet'
 import { useGameStore } from '../stores/game'
 import { useQuestionStore } from '../stores/questions'
 import { poiPin } from '../lib/poiPin'
+import { SHEET_HALF_RATIO } from '../lib/layout'
 import { cssColor, resolvedTheme } from '../lib/theme'
 
 export function usePoiLayers(map: Ref<L.Map | null>) {
@@ -39,14 +40,21 @@ export function usePoiLayers(map: Ref<L.Map | null>) {
 
     const skip = previewCategory()
     const color = cssColor('--preview', '#1e293b')
+    const chosen = questions.selectedPoi
 
     const layers: L.Layer[] = []
     for (const id of game.activePoiCategories) {
       if (id === skip) continue
       for (const poi of questions.poisByCategory.get(id) ?? []) {
-        layers.push(poiPin(poi, color))
+        // Der gewählte Ort kommt gleich hervorgehoben dazu — zweimal übereinander
+        // wäre nur der schlichte Pin unter dem grossen.
+        if (poi.id !== chosen?.id) layers.push(poiPin(poi, color))
       }
     }
+
+    // Der aus der Suche gewählte Ort, unabhängig von den Häkchen im Menü: wer ihn
+    // gesucht hat, will ihn sehen und nicht erst seine Kategorie einschalten.
+    if (chosen) layers.push(poiPin(chosen, cssColor('--accent', '#2563eb'), true))
 
     if (layers.length) group = L.layerGroup(layers).addTo(map.value)
   }
@@ -57,9 +65,28 @@ export function usePoiLayers(map: Ref<L.Map | null>) {
     // Erst nach dem Laden von poi.json gibt es überhaupt Orte zu zeichnen.
     watch(() => questions.poisByCategory, draw)
     watch(previewCategory, draw)
+    watch(() => questions.selectedPoiId, draw)
     // Die Farbe kommt aus dem CSS und ändert sich mit der Ansicht.
     watch(resolvedTheme, draw)
   }
 
-  return { bind }
+  /**
+   * Die Karte auf einen Ort ziehen.
+   *
+   * Wie `focusStation`: `fitBounds` statt `flyTo` (die Flug-Animation kam im Test nicht
+   * zuverlässig an), und unten der Zuschlag für das Sheet, hinter dem der Ort sonst läge.
+   * 600 m Kantenlänge statt des Versteck-Radius — ein Ort hat keinen, und ein Punkt
+   * allein ergäbe ein leeres Rechteck und damit die höchste Zoomstufe.
+   */
+  function focusPoi(id: string) {
+    const poi = questions.pois.find((p) => p.id === id)
+    if (!poi || !map.value) return
+    map.value.fitBounds(L.latLng(poi.lat, poi.lon).toBounds(600), {
+      paddingTopLeft: [48, 48],
+      paddingBottomRight: [48, Math.round(window.innerHeight * SHEET_HALF_RATIO)],
+      maxZoom: 16,
+    })
+  }
+
+  return { bind, focusPoi }
 }

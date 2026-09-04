@@ -178,6 +178,24 @@ function onBack() {
 }
 
 /**
+ * Ein Ort aus der Suche: Karte hin, Ort hervorgehoben.
+ *
+ * Die Haltestellen-Auswahl wird dabei gelöscht — sonst spränge deren Detailansicht auf
+ * und verdeckte ausgerechnet die Liste, aus der gerade gewählt wurde. Ein zweiter Tipp
+ * auf dieselbe Zeile nimmt die Hervorhebung wieder weg; sonst gäbe es keinen Weg zurück,
+ * ausser einen anderen Ort zu wählen.
+ */
+function onSelectPoi(id: string) {
+  if (questions.selectedPoiId === id) {
+    questions.selectPoi(null)
+    return
+  }
+  store.select(null)
+  questions.selectPoi(id)
+  mapRef.value?.focusPoi(id)
+}
+
+/**
  * Hell und dunkel.
  *
  * Ohne eigene Wahl folgt die App dem Gerät; der erste Druck kippt sie auf das Gegenteil
@@ -487,7 +505,7 @@ function onShareQuestion(question: Question, radiusMeters: number | null) {
           </div>
 
           <StationDetail v-if="store.selectedStation" @back="onBack" />
-          <StationList v-else @select="onSelect" />
+          <StationList v-else @select="onSelect" @select-poi="onSelectPoi" />
         </template>
 
         <template v-else>

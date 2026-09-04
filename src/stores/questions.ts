@@ -128,6 +128,22 @@ export const useQuestionStore = defineStore('questions', () => {
       .filter((category) => category.questions.length > 0)
   })
 
+  /**
+   * Der Ort, den die Suche zuletzt gewählt hat.
+   *
+   * Er wird auf der Karte hervorgehoben, auch wenn seine Kategorie im Orte-Menü
+   * ausgeblendet ist — sonst sucht man etwas und sieht danach nichts.
+   */
+  const selectedPoiId = ref<string | null>(null)
+
+  const selectedPoi = computed(
+    () => pois.value.find((poi) => poi.id === selectedPoiId.value) ?? null,
+  )
+
+  function selectPoi(id: string | null) {
+    selectedPoiId.value = id
+  }
+
   const poisByCategory = computed(() => {
     const map = new Map<string, Poi[]>()
     for (const poi of pois.value) {
@@ -308,6 +324,9 @@ export const useQuestionStore = defineStore('questions', () => {
     categoryOfQuestion,
     filteredCategories,
     poisByCategory,
+    selectedPoiId,
+    selectedPoi,
+    selectPoi,
     usedCount,
     drawableCount,
     setPreview,

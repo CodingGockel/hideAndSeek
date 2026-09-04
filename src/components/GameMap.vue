@@ -51,6 +51,7 @@ defineExpose({
   focusStation: layers.focusStation,
   centerOnUser: layers.centerOnUser,
   focusPreview: preview.focusPreview,
+  focusPoi: pois.focusPoi,
   getCenter,
 })
 </script>
